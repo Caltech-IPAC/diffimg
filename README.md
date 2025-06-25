@@ -1,0 +1,2 @@
+# diffimg
+Generalized image differencing
