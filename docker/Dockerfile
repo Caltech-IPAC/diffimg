@@ -67,20 +67,20 @@ RUN yum -y install procps
 
 # Checkout RAPID git repo.
 
-RUN git clone https://github.com/Caltech-IPAC/rapid code
-WORKDIR /code
+RUN git clone https://github.com/Caltech-IPAC/rapid rapid
+WORKDIR /rapid
 
-# Build C code in RAPID software stack.
+# Build C executables in RAPID software stack.
 
-ARG RAPID_SW=/code
-RUN cd /code/c/builds && \
+ARG RAPID_SW=/rapid
+RUN cd /rapid/c/builds && \
     ./build_inside_container.sh
 
 # Configure run-time environment.
 
-ENV PATH=/code/c/bin:/root/.local/bin:/root/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
-ENV LD_LIBRARY_PATH=/code/c/lib
-ENV PYTHONPATH=/code
+ENV PATH=/rapid/c/bin:/root/.local/bin:/root/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+ENV LD_LIBRARY_PATH=/rapid/c/lib
+ENV PYTHONPATH=/rapid
 ENV PYTHONUNBUFFERED=1
 
 WORKDIR /tmp
@@ -89,4 +89,4 @@ WORKDIR /tmp
 
 ENTRYPOINT ["bash"]
 
-CMD ["/code/pipeline/awsBatchSubmitJobs_runSingleSciencePipeline.sh"]
+CMD ["/rapid/pipeline/awsBatchSubmitJobs_runSingleSciencePipeline.sh"]
