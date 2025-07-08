@@ -89,4 +89,4 @@ WORKDIR /tmp
 
 ENTRYPOINT ["bash"]
 
-CMD ["/code/pipeline/awsBatchSubmitJobs_runSingleSciencePipeline.sh"]
+#CMD ["/code/pipeline/awsBatchSubmitJobs_runSingleSciencePipeline.sh"]
