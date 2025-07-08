@@ -33,8 +33,10 @@ crpix1 = w.wcs.crpix[0]
 crpix2 = w.wcs.crpix[1]
 
 
-# Example of converting pixel coordinates to celestial coordinates
-pixel_x, pixel_y = crpix1, crpix2
+# Example of converting pixel coordinates to celestial coordinates.
+# The following should reproduce CRVAL1,CRVAL2.
+# Pixel indexes need to be zero-based for the Python calculation!
+pixel_x, pixel_y = crpix1 - 1, crpix2 - 1
 celestial_coords = w.pixel_to_world(pixel_x, pixel_y)
 print(f"Pixel ({pixel_x}, {pixel_y}) corresponds to {celestial_coords.ra.deg:.12f} RA and {celestial_coords.dec.deg:.12f} Dec.")
 
