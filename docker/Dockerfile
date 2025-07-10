@@ -32,6 +32,7 @@ RUN pip install --upgrade sip_tpv
 RUN pip install --upgrade matplotlib
 RUN pip install --upgrade sfft
 RUN pip install --upgrade scipy
+RUN pip install --upgrade pyvo
 
 # Install Python 3.12 with packages (/usr/bin/python3.12)
 # Cannot under Python 3.12: sfft,photutils(?)
@@ -49,6 +50,7 @@ RUN python3.12 -m pip install --upgrade sympy
 RUN python3.12 -m pip install --upgrade sip_tpv
 RUN python3.12 -m pip install --upgrade matplotlib
 RUN python3.12 -m pip install --upgrade scipy
+RUN python3.12 -m pip install --upgrade pyvo
 # On Russ's Mac: ERROR: failed to solve: process "/bin/sh -c python3.12 -m pip install --upgrade photutils" did not complete successfully: exit code: 1
 #RUN python3.12 -m pip install --upgrade "photutils[all]"
 
