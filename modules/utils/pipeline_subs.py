@@ -7,6 +7,7 @@ import os
 import math
 from astropy.wcs import WCS
 from astropy.io import fits
+from astropy.coordinates import SkyCoord
 import re
 import subprocess
 import numpy as np
@@ -16,10 +17,6 @@ from botocore.exceptions import ClientError
 
 from modules.sip_tpv.sip_tpv.sip_to_pv import sip_to_pv
 
-from photutils.detection import DAOStarFinder
-from photutils.psf import PSFPhotometry,ImagePSF,IterativePSFPhotometry
-
-import matplotlib.pyplot as plt
 
 plot_flag = False
 
@@ -1353,6 +1350,11 @@ def compute_diffimage_psf_catalog(n_clip_sigma,
     Odd numbers for NAXIS1 and NAXIS2 is a required assumption for input PSF.
     '''
 
+    from photutils.detection import DAOStarFinder
+    from photutils.psf import PSFPhotometry,ImagePSF,IterativePSFPhotometry
+
+    import matplotlib.pyplot as plt
+
 
     print ("n_thresh_sigma =",n_thresh_sigma)
     print ("n_clip_sigma =",n_clip_sigma)
@@ -1870,44 +1872,153 @@ def compute_naive_difference_image(fits_file_sci,fits_file_ref,output_fits_file)
 
 
 #####################################################################################################
-# Compute RA,Dec of four corners of image.  Pixel coordinates are zero-based in Python.
+# Compute pixel coordinates of four corners of image.  Pixel coordinates are zero-based in Python.
 #####################################################################################################
 
-def compute_image_center_and_four_corners(w,naxis1,naxis2):
+def compute_pix_image_center_and_four_corners(naxis1,naxis2):
 
-    pixel_x = float(naxis1) / 2.0 + 0.5 - 1
-    pixel_y = float(naxis2) / 2.0 + 0.5 - 1
+    x0 = float(naxis1) / 2.0 + 0.5 - 1
+    y0 = float(naxis2) / 2.0 + 0.5 - 1
+
+    x1 = 0
+    y1 = 0
+
+    x2 = naxis1 - 1
+    y2 = 0
+
+    x3 = naxis1 - 1
+    y3 = naxis2 - 1
+
+    x4 = 0
+    y4 = naxis2 - 1
+
+    return x0,y0,x1,y1,x2,y2,x3,y3,x4,y4
+
+
+#####################################################################################################
+# Compute RA,Dec of center and four corners of image.  Pixel coordinates are zero-based in Python.
+#####################################################################################################
+
+def compute_sky_image_center_and_four_corners(w,x0,y0,x1,y1,x2,y2,x3,y3,x4,y4):
+
+    pixel_x = x0
+    pixel_y = y0
     celestial_coords = w.pixel_to_world(pixel_x, pixel_y)
-    print(f"Pixel ({pixel_x}, {pixel_y}) corresponds to {celestial_coords.ra.deg:.12f} RA and {celestial_coords.dec.deg:.12f} Dec.")
+    print(f"Center: Pixel ({pixel_x}, {pixel_y}) corresponds to {celestial_coords.ra.deg:.12f} RA and {celestial_coords.dec.deg:.12f} Dec.")
     ra0 = celestial_coords.ra.deg
     dec0 = celestial_coords.dec.deg
 
-    pixel_x = 0
-    pixel_y = 0
+    pixel_x = x1
+    pixel_y = y1
     celestial_coords = w.pixel_to_world(pixel_x, pixel_y)
-    print(f"Pixel ({pixel_x}, {pixel_y}) corresponds to {celestial_coords.ra.deg:.12f} RA and {celestial_coords.dec.deg:.12f} Dec.")
+    print(f"Corner 1: Pixel ({pixel_x}, {pixel_y}) corresponds to {celestial_coords.ra.deg:.12f} RA and {celestial_coords.dec.deg:.12f} Dec.")
     ra1 = celestial_coords.ra.deg
     dec1 = celestial_coords.dec.deg
 
-    pixel_x = naxis1 - 1
-    pixel_y = 0
+    pixel_x = x2
+    pixel_y = y2
     celestial_coords = w.pixel_to_world(pixel_x, pixel_y)
-    print(f"Pixel ({pixel_x}, {pixel_y}) corresponds to {celestial_coords.ra.deg:.12f} RA and {celestial_coords.dec.deg:.12f} Dec.")
+    print(f"Corner 2: Pixel ({pixel_x}, {pixel_y}) corresponds to {celestial_coords.ra.deg:.12f} RA and {celestial_coords.dec.deg:.12f} Dec.")
     ra2 = celestial_coords.ra.deg
     dec2 = celestial_coords.dec.deg
 
-    pixel_x = naxis1 - 1
-    pixel_y = naxis2 - 1
+    pixel_x = x3
+    pixel_y = y3
     celestial_coords = w.pixel_to_world(pixel_x, pixel_y)
-    print(f"Pixel ({pixel_x}, {pixel_y}) corresponds to {celestial_coords.ra.deg:.12f} RA and {celestial_coords.dec.deg:.12f} Dec.")
+    print(f"Corner 3: Pixel ({pixel_x}, {pixel_y}) corresponds to {celestial_coords.ra.deg:.12f} RA and {celestial_coords.dec.deg:.12f} Dec.")
     ra3 = celestial_coords.ra.deg
     dec3 = celestial_coords.dec.deg
 
-    pixel_x = 0
-    pixel_y = naxis2 - 1
+    pixel_x = x4
+    pixel_y = y4
     celestial_coords = w.pixel_to_world(pixel_x, pixel_y)
-    print(f"Pixel ({pixel_x}, {pixel_y}) corresponds to {celestial_coords.ra.deg:.12f} RA and {celestial_coords.dec.deg:.12f} Dec.")
+    print(f"Corner 4: Pixel ({pixel_x}, {pixel_y}) corresponds to {celestial_coords.ra.deg:.12f} RA and {celestial_coords.dec.deg:.12f} Dec.")
     ra4 = celestial_coords.ra.deg
     dec4 = celestial_coords.dec.deg
 
     return ra0,dec0,ra1,dec1,ra2,dec2,ra3,dec3,ra4,dec4
+
+
+#####################################################################################################
+# Compute pixel coordinates of center and four corners of image in WCS grid from sky positions.
+# Pixel coordinates are zero-based in Python.
+#####################################################################################################
+
+def compute_pix_image_center_and_four_corners_from_sky(w,ra0,dec0,ra1,dec1,ra2,dec2,ra3,dec3,ra4,dec4):
+
+    ra = ra0
+    dec = dec0
+    pos = SkyCoord(ra=ra, dec=dec, unit='deg')
+    x0,y0 = w.world_to_pixel(pos)
+    print(f"Center: ra={ra}, dec={dec}) corresponds to x={x0}, y={y0}")
+
+    ra = ra1
+    dec = dec1
+    pos = SkyCoord(ra=ra, dec=dec, unit='deg')
+    x1,y1 = w.world_to_pixel(pos)
+    print(f"Corner 1: ra={ra}, dec={dec}) corresponds to x={x1}, y={y1}")
+
+    ra = ra2
+    dec = dec2
+    pos = SkyCoord(ra=ra, dec=dec, unit='deg')
+    x2,y2 = w.world_to_pixel(pos)
+    print(f"Corner 2: ra={ra}, dec={dec}) corresponds to x={x2}, y={y2}")
+
+    ra = ra3
+    dec = dec3
+    pos = SkyCoord(ra=ra, dec=dec, unit='deg')
+    x3,y3 = w.world_to_pixel(pos)
+    print(f"Corner 3: ra={ra}, dec={dec}) corresponds to x={x3}, y={y3}")
+
+    ra = ra4
+    dec = dec4
+    pos = SkyCoord(ra=ra, dec=dec, unit='deg')
+    x4,y4 = w.world_to_pixel(pos)
+    print(f"Corner 4: ra={ra}, dec={dec}) corresponds to x={x4}, y={y4}")
+
+    return x0,y0,x1,y1,x2,y2,x3,y3,x4,y4
+
+
+#####################################################################################################
+# Compute overlap area of reference image onto science image.
+#####################################################################################################
+
+def compute_image_overlap_area(w_sci,x0_sci,y0_sci,x1_sci,y1_sci,x2_sci,y2_sci,x3_sci,y3_sci,x4_sci,y4_sci,fits_file_ref):
+
+
+    # Read reference-image FITS file.
+
+    hdul = fits.open(fits_file_ref)
+    hdr = hdul[0].header
+    data = hdul[0].data
+
+    naxis1_ref = hdr["NAXIS1"]
+    naxis2_ref = hdr["NAXIS2"]
+
+    w_ref = WCS(hdr) # Initialize WCS object from FITS header
+
+    hdul.close()
+
+
+    # Compute pixel coordinates of reference-image center and four corners.
+
+    x0_ref,y0_ref,x1_ref,y1_ref,x2_ref,y2_ref,x3_ref,y3_ref,x4_ref,y4_ref = \
+        compute_pix_image_center_and_four_corners(naxis1_ref,naxis2_ref)
+
+
+    # Compute RA,Dec of center and four corners of reference image.
+
+    ra0,dec0,ra1,dec1,ra2,dec2,ra3,dec3,ra4,dec4 = \
+        compute_sky_image_center_and_four_corners(w_ref,x0_ref,y0_ref,x1_ref,y1_ref,x2_ref,y2_ref,x3_ref,y3_ref,x4_ref,y4_ref)
+
+
+    # Compute pixel coordinates of reference-image center and four corners in the science-image grid.
+
+    x0_refsci,y0_refsci,x1_refsci,y1_refsci,x2_refsci,y2_refsci,x3_refsci,y3_refsci,x4_refsci,y4_refsci = \
+        compute_pix_image_center_and_four_corners_from_sky(w_sci,ra0,dec0,ra1,dec1,ra2,dec2,ra3,dec3,ra4,dec4)
+
+
+    # Compute overlap area now that polygon vertices are known.
+
+    print("Done computing overlap area...")
+

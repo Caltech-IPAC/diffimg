@@ -19,8 +19,8 @@ import re
 to_zone = tz.gettz('America/Los_Angeles')
 
 import modules.utils.pipeline_subs as util
-import pipeline.referenceImageSubs as rfis
-import pipeline.differenceImageSubs as dfis
+#import pipeline.referenceImageSubs as rfis
+#import pipeline.differenceImageSubs as dfis
 
 start_time_benchmark = time.time()
 start_time_benchmark_at_start = start_time_benchmark
@@ -78,32 +78,37 @@ if __name__ == '__main__':
         hdr.remove('PROJP3', remove_all=True)
         hdr.remove('PROJP5', remove_all=True)
 
-        w_science = WCS(hdr) # Initialize WCS object from FITS header
+        w_sci = WCS(hdr) # Initialize WCS object from FITS header
 
-    print(w_science)
+    print(w_sci)
 
-    print("CTYPE = ",w_science.wcs.crpix)
+    print("CTYPE = ",w_sci.wcs.crpix)
 
     naxis1 = hdr['NAXIS1']
     naxis2 = hdr['NAXIS2']
 
     print("naxis1,naxis2 =",naxis1,naxis2)
 
-    crpix1 = w_science.wcs.crpix[0]
-    crpix2 = w_science.wcs.crpix[1]
+    crpix1 = w_sci.wcs.crpix[0]
+    crpix2 = w_sci.wcs.crpix[1]
 
 
     # Example of converting pixel coordinates to celestial coordinates
     # The following should reproduce CRVAL1,CRVAL2.
 
     pixel_x, pixel_y = crpix1 - 1, crpix2 - 1
-    celestial_coords = w_science.pixel_to_world(pixel_x, pixel_y)
+    celestial_coords = w_sci.pixel_to_world(pixel_x, pixel_y)
     print(f"CRVAL1,CRVAL2 Pixel ({pixel_x}, {pixel_y}) corresponds to {celestial_coords.ra.deg:.12f} RA and {celestial_coords.dec.deg:.12f} Dec.")
 
 
-    # Compute RA,Dec of four corners of science image.
+    # Compute pixel coordinates of science-image center and four corners.
 
-    (ra0,dec0,ra1,dec1,ra2,dec2,ra3,dec3,ra4,dec4) = util.compute_image_center_and_four_corners(w_science,naxis1,naxis2)
+    x0,y0,x1,y1,x2,y2,x3,y3,x4,y4 = util.compute_pix_image_center_and_four_corners(naxis1,naxis2)
+
+
+    # Compute RA,Dec of center and four corners of science image.
+
+    (ra0,dec0,ra1,dec1,ra2,dec2,ra3,dec3,ra4,dec4) = util.compute_sky_image_center_and_four_corners(w_sci,x0,y0,x1,y1,x2,y2,x3,y3,x4,y4)
 
 
     # Specify sky position of interest and desired filter.
@@ -142,18 +147,18 @@ if __name__ == '__main__':
     filename_match = re.match(r".+?name\=(.+?.fits)", download_url)
 
     try:
-        fits_file = filename_match.group(1)
-        print("fits_file =",fits_file)
+        fits_file_ref = filename_match.group(1)
+        print("fits_file_ref =",fits_file_ref)
 
-        gz_fits_file = fits_file + ".gz"
+        gz_fits_file_ref = fits_file_ref + ".gz"
 
-        curl_cmd = "curl --output " + gz_fits_file + " \"" + download_url + "\""
+        curl_cmd = "curl --output " + gz_fits_file_ref + " \"" + download_url + "\""
         print("curl_cmd =",curl_cmd)
 
         return_code = os.system(curl_cmd)
         print(f"Command exited with code: {return_code}")
 
-        gunzip_cmd = "gunzip " + gz_fits_file
+        gunzip_cmd = "gunzip -f " + gz_fits_file_ref
         print("gunzip_cmd =",gunzip_cmd)
 
         return_code = os.system(gunzip_cmd)
@@ -162,6 +167,10 @@ if __name__ == '__main__':
     except:
         print("*** Error: No FITS filename match found; quitting...")
         exit(64)
+
+
+    util.compute_image_overlap_area(w_sci,x0,y0,x1,y1,x2,y2,x3,y3,x4,y4,fits_file_ref)
+
 
     exit(0)
 
