@@ -1,10 +1,11 @@
 """
-RAPID Pipeline Subs
+Pipeline Subs
 """
 
 
 import os
 import math
+from astropy.wcs import WCS
 from astropy.io import fits
 import re
 import subprocess
@@ -1872,7 +1873,14 @@ def compute_naive_difference_image(fits_file_sci,fits_file_ref,output_fits_file)
 # Compute RA,Dec of four corners of image.  Pixel coordinates are zero-based in Python.
 #####################################################################################################
 
-def compute_four_image_corners(wcs,naxis1,naxis2):
+def compute_image_center_and_four_corners(w,naxis1,naxis2):
+
+    pixel_x = float(naxis1) / 2.0 + 0.5 - 1
+    pixel_y = float(naxis2) / 2.0 + 0.5 - 1
+    celestial_coords = w.pixel_to_world(pixel_x, pixel_y)
+    print(f"Pixel ({pixel_x}, {pixel_y}) corresponds to {celestial_coords.ra.deg:.12f} RA and {celestial_coords.dec.deg:.12f} Dec.")
+    ra0 = celestial_coords.ra.deg
+    dec0 = celestial_coords.dec.deg
 
     pixel_x = 0
     pixel_y = 0
@@ -1902,4 +1910,4 @@ def compute_four_image_corners(wcs,naxis1,naxis2):
     ra4 = celestial_coords.ra.deg
     dec4 = celestial_coords.dec.deg
 
-    return ra1,dec1,ra2,dec2,ra3,dec3,ra4,dec4
+    return ra0,dec0,ra1,dec1,ra2,dec2,ra3,dec3,ra4,dec4
