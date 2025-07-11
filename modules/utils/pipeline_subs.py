@@ -2090,6 +2090,8 @@ def compute_image_overlap_area(w_sci,
             print(label,intersecting_area)
 
 
+    # Compute the percentage of overlap area between science and reference images.
+
     percent_overlap = 100.0 * float(intersecting_area) / (naxis1_sci * naxis2_sci)
 
     print("percent_overlap =",percent_overlap)
