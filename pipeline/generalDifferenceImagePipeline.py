@@ -297,7 +297,6 @@ if __name__ == '__main__':
 
 
     # Compute reference-image uncertainty image via simple model (photon noise only).
-    # Resize images to 4089x4089 (odd number of pixels on each side).
 
     fits_file_ref_uncert = fits_file_ref.replace(".fits","_unc.fits")
 
@@ -308,10 +307,14 @@ if __name__ == '__main__':
                                                     nframes_refimage)
 
 
+    # Compute reference-image coverage map.
 
+    fits_file_ref_cov = fits_file_ref.replace(".fits","_cov.fits")
 
-
-
+    rfis.compute_coverage_map(fits_file_ref,
+                              hdu_index,
+                              fits_file_ref_cov,
+                              nframes_refimage)
 
 
     # Generate reference-image catalog.
@@ -327,7 +330,7 @@ if __name__ == '__main__':
 
     # Compute additional quantities needed for later populating refimmeta table in RAPID operations database.
 
-    sextractor_refimage_paramsfile = cdf_path + "/rapidSexParamsRefImage.inp";
+    sextractor_refimage_paramsfile = cfg_path + "/srcExtractParamsRefImage.inp";
     params_to_get_refimage = ["FWHM_IMAGE"]
 
     vals_refimage = util.parse_ascii_text_sextractor_catalog(filename_refimage_catalog,
@@ -593,6 +596,7 @@ if __name__ == '__main__':
                                                                                                  reformatted_science_uncert_image_filename,
                                                                                                  output_resampled_reference_image,
                                                                                                  output_resampled_reference_uncert_image,
+                                                                                                 cfg_path,
                                                                                                  gainmatch_dict,
                                                                                                  sextractor_gainmatch_dict,
                                                                                                  astrometric_uncert_x,
@@ -746,14 +750,14 @@ if __name__ == '__main__':
     # image, then use to perform aperture phot on difference image to generate
     # raw ascii catalog file.
 
-    sextractor_diffimage_paramsfile = cdf_path + "/rapidSexParamsDiffImage.inp";
+    sextractor_diffimage_paramsfile = cfg_path + "/srcExtractParamsDiffImage.inp";
 
     sextractor_diffimage_dict["sextractor_detection_image".lower()] = filename_scorrimage_masked
     sextractor_diffimage_dict["sextractor_input_image".lower()] = filename_diffimage_masked
     sextractor_diffimage_dict["sextractor_WEIGHT_IMAGE".lower()] = filename_weight_image
     sextractor_diffimage_dict["sextractor_PARAMETERS_NAME".lower()] = sextractor_diffimage_paramsfile
-    sextractor_diffimage_dict["sextractor_FILTER_NAME".lower()] = cdf_path + "/rapidSexDiffImageFilter.conv"
-    sextractor_diffimage_dict["sextractor_STARNNW_NAME".lower()] = cdf_path + "/rapidSexDiffImageStarGalaxyClassifier.nnw"
+    sextractor_diffimage_dict["sextractor_FILTER_NAME".lower()] = cfg_path + "/srcExtractDiffImageFilter.conv"
+    sextractor_diffimage_dict["sextractor_STARNNW_NAME".lower()] = cfg_path + "/srcExtractDiffImageStarGalaxyClassifier.nnw"
     sextractor_diffimage_dict["sextractor_CATALOG_NAME".lower()] = filename_diffimage_sextractor_catalog
     sextractor_cmd = util.build_sextractor_command_line_args(sextractor_diffimage_dict)
     exitcode_from_sextractor = util.execute_command(sextractor_cmd)
@@ -919,14 +923,14 @@ if __name__ == '__main__':
             # image, then use to perform aperture phot on difference image to generate
             # raw ascii catalog file.
 
-            sextractor_diffimage_paramsfile = cdf_path + "/rapidSexParamsDiffImage.inp";
+            sextractor_diffimage_paramsfile = cfg_path + "/srcExtractParamsDiffImage.inp";
 
             sextractor_diffimage_dict["sextractor_detection_image".lower()] = filename_sfftdiffimage
             sextractor_diffimage_dict["sextractor_input_image".lower()] = filename_sfftdiffimage
             sextractor_diffimage_dict["sextractor_WEIGHT_IMAGE".lower()] = filename_weight_image
             sextractor_diffimage_dict["sextractor_PARAMETERS_NAME".lower()] = sextractor_diffimage_paramsfile
-            sextractor_diffimage_dict["sextractor_FILTER_NAME".lower()] = cdf_path + "/rapidSexDiffImageFilter.conv"
-            sextractor_diffimage_dict["sextractor_STARNNW_NAME".lower()] = cdf_path + "/rapidSexDiffImageStarGalaxyClassifier.nnw"
+            sextractor_diffimage_dict["sextractor_FILTER_NAME".lower()] = cfg_path + "/srcExtractDiffImageFilter.conv"
+            sextractor_diffimage_dict["sextractor_STARNNW_NAME".lower()] = cfg_path + "/srcExtractDiffImageStarGalaxyClassifier.nnw"
             sextractor_diffimage_dict["sextractor_CATALOG_NAME".lower()] = filename_sfftdiffimage_sextractor_catalog
             sextractor_cmd = util.build_sextractor_command_line_args(sextractor_diffimage_dict)
             exitcode_from_sextractor = util.execute_command(sextractor_cmd)
