@@ -2094,7 +2094,7 @@ def compute_image_overlap_area(w_sci,
 
     percent_overlap = 100.0 * float(intersecting_area) / (naxis1_sci * naxis2_sci)
 
-    print("percent_overlap =",percent_overlap)
+    print(f"percent_overlap = {percent_overlap:.2f}")
 
     print("Done computing overlap area...")
 
