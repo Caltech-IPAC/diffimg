@@ -2098,3 +2098,37 @@ def compute_image_overlap_area(w_sci,
 
     print("Done computing overlap area...")
 
+
+#-------------------------------------------------------------------
+# Assumes the 2D image data are in the first HDU of the FITS file.
+# Compute uncertainty image via simple model (photon noise only).
+#
+# Inputs are:
+# 1. FITS filename of an image
+# 2. HDU index of image
+# 2. Output uncertainty FITS filename
+# 2. CCD gain
+# 3. Number of frames in stack (1 for single image)
+
+def compute_uncertainty_image_via_simple_model(input_filename,hdu_index,output_filename,ccd_gain,nframes):
+
+    hdul = fits.open(input_filename)
+    hdr = hdul[hdu_index].header
+    data = hdul[hdu_index].data
+
+    hdul.close()
+
+    hdr["BUNIT"] = "DN"
+
+    pos_np_data = np.abs(data)            # Ensure data are positive for uncertainty calculations.
+
+    data_unc = np.sqrt(pos_np_data / (ccd_gain * float(nframes)))
+
+    hdu_unc = fits.PrimaryHDU(header=hdr,data=data_unc.astype(np.float32))
+    hdu_list_unc = []
+    hdu_list_unc.append(hdu_unc)
+    hdu_unc = fits.HDUList(hdu_list_unc)
+    hdu_unc.writeto(output_filename,overwrite=True,checksum=True)
+
+    return
+
