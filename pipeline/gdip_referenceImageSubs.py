@@ -37,7 +37,7 @@ def generateReferenceImageCatalog(filename_refimage_image,
 
 
 #####################################################################################
-# Compute reference-image coverage map.
+# Compute reference-image coverage map (post facto with limited information).
 #####################################################################################
 
 
@@ -51,7 +51,7 @@ def compute_coverage_map(input_filename,hdu_index,output_filename,nframes):
 
     hdr["BUNIT"] = "counts"
 
-    np_data = np.array(data)            # Ensure data are positive for uncertainty calculations.
+    np_data = np.array(data)
 
     cov_map = np.where(np.isnan(np_data), 0.0, nframes)
 
@@ -62,4 +62,3 @@ def compute_coverage_map(input_filename,hdu_index,output_filename,nframes):
     hdu_cov.writeto(output_filename,overwrite=True,checksum=True)
 
     return
-
