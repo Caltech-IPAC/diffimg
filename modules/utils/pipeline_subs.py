@@ -299,6 +299,8 @@ def fits_data_statistics_with_clipping(input_filename,n_sigma = 3.0,hdu_index = 
     hdul = fits.open(input_filename)
     data_array = hdul[hdu_index].data
 
+    hdul.close()
+
     cf = compute_clip_corr(n_sigma)
     sqrtcf = np.sqrt(cf)
 
@@ -460,6 +462,8 @@ def read_roman_tessellation_nside10():
     hdul = fits.open(roman_tessellation_file)
 
     rt = hdul[1].data     # Table is in second FITS extension.
+
+    hdul.close()
 
     roman_tessellation_dict = {}
 
@@ -805,6 +809,8 @@ def convert_from_sip_to_pv(input_fits_file_with_sip,hdu_index,output_fits_file_w
 
     new_hdu.writeto(output_fits_file_with_pv,overwrite=True,checksum=True)
 
+    hdul.close()
+
 
 #-------------------------------------------------------------------
 # Scale image data in input FITS file and write new output FITS file.
@@ -827,6 +833,8 @@ def scale_image_data(input_fits_file,scale_factor,output_fits_file):
     new_hdu = fits.PrimaryHDU(data=hdul[0].data.astype(np.float32),header=hdul[0].header)
 
     new_hdu.writeto(output_fits_file,overwrite=True,checksum=True)
+
+    hdul.close()
 
 
 #-------------------------------------------------------------------
@@ -1393,13 +1401,19 @@ def compute_diffimage_psf_catalog(n_clip_sigma,
     hdr_image = hdul_image[0].header
     data_image = hdul_image[0].data
 
+    hdul_image.close()
+
     hdul_uncert = fits.open(input_unc_filename)
     hdr_uncert = hdul_uncert[0].header
     data_uncert = hdul_uncert[0].data
 
+    hdul_uncert.close()
+
     hdul_psf = fits.open(input_psf_filename)
     hdr_psf = hdul_psf[0].header
     data_psf = hdul_psf[0].data
+
+    hdul_psf.close()
 
     naxis1 = hdr_psf["NAXIS1"]
     naxis2 = hdr_psf["NAXIS2"]
@@ -1617,6 +1631,8 @@ def replace_nans_with_sat_val_rate(fits_file,sat_val_rate):
 
         hdul.writeto(fits_file,overwrite=True,checksum=True)
 
+        hdul.close()
+
 
         # Return row and columns indices of NaNs.
 
@@ -1668,6 +1684,8 @@ def restore_nans(fits_file,nan_indices):
         # Write output FITS file.
 
         hdul.writeto(fits_file,overwrite=True,checksum=True)
+
+        hdul.close()
 
 
     # Return
@@ -1778,6 +1796,8 @@ def apply_subpixel_orthogonal_offsets(fits_file,dx,dy,output_fits_file=None):
 
         hdul.writeto(output_fits_file,overwrite=True,checksum=True)
 
+        hdul.close()
+
 
     # Return None implicitly.
 
@@ -1822,6 +1842,8 @@ def transpose_image_data(fits_file,output_fits_file=None):
 
     hdul.writeto(output_fits_file,overwrite=True,checksum=True)
 
+    hdul.close()
+
 
     # Return None implicitly.
 
@@ -1844,9 +1866,13 @@ def compute_naive_difference_image(fits_file_sci,fits_file_ref,output_fits_file)
     hdr_sci = hdul_sci[0].header
     data_sci = hdul_sci[0].data
 
+    hdul_sci.close()
+
     hdul_ref = fits.open(fits_file_ref)
     hdr_ref = hdul_ref[0].header
     data_ref = hdul_ref[0].data
+
+    hdul_ref.close()
 
 
     # Subtract the image data.
@@ -2019,6 +2045,11 @@ def compute_image_overlap_area(w_sci,x0_sci,y0_sci,x1_sci,y1_sci,x2_sci,y2_sci,x
 
 
     # Compute overlap area now that polygon vertices are known.
+
+    with open('my_file.txt', 'w') as f:
+        f.write('This is the first line.\n')
+        f.write('This is the second line.\n')
+
 
     print("Done computing overlap area...")
 
