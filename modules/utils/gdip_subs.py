@@ -12,8 +12,6 @@ import re
 import subprocess
 import numpy as np
 import numpy.ma as ma
-import boto3
-from botocore.exceptions import ClientError
 
 from modules.sip_tpv.sip_tpv.sip_to_pv import sip_to_pv
 
