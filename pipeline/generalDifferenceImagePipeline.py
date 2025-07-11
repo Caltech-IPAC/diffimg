@@ -169,7 +169,7 @@ if __name__ == '__main__':
         exit(64)
 
 
-    util.compute_image_overlap_area(w_sci,x0,y0,x1,y1,x2,y2,x3,y3,x4,y4,fits_file_ref)
+    util.compute_image_overlap_area(w_sci,naxis1,naxis2,x0,y0,x1,y1,x2,y2,x3,y3,x4,y4,fits_file_ref)
 
 
     exit(0)

@@ -2009,7 +2009,14 @@ def compute_pix_image_center_and_four_corners_from_sky(w,ra0,dec0,ra1,dec1,ra2,d
 # Compute overlap area of reference image onto science image.
 #####################################################################################################
 
-def compute_image_overlap_area(w_sci,x0_sci,y0_sci,x1_sci,y1_sci,x2_sci,y2_sci,x3_sci,y3_sci,x4_sci,y4_sci,fits_file_ref):
+def compute_image_overlap_area(w_sci,
+                               naxis1_sci,naxis2_sci,
+                               x0_sci,y0_sci,
+                               x1_sci,y1_sci,
+                               x2_sci,y2_sci,
+                               x3_sci,y3_sci,
+                               x4_sci,y4_sci,
+                               fits_file_ref):
 
 
     # Read reference-image FITS file.
@@ -2046,10 +2053,46 @@ def compute_image_overlap_area(w_sci,x0_sci,y0_sci,x1_sci,y1_sci,x2_sci,y2_sci,x
 
     # Compute overlap area now that polygon vertices are known.
 
-    with open('my_file.txt', 'w') as f:
-        f.write('This is the first line.\n')
-        f.write('This is the second line.\n')
+    num_contours = 1
+    num_vertices = 4
+    num_holes = 0
 
+    with open('subjfile', 'w') as f:
+        f.write(f'{num_contours}\n')
+        f.write(f'{num_vertices}\n')
+        f.write(f'{num_holes}\n')
+        f.write(f'{x1_sci} {y1_sci}\n')
+        f.write(f'{x2_sci} {y2_sci}\n')
+        f.write(f'{x3_sci} {y3_sci}\n')
+        f.write(f'{x4_sci} {y4_sci}\n')
+
+    with open('clipfile', 'w') as f:
+        f.write(f'{num_contours}\n')
+        f.write(f'{num_vertices}\n')
+        f.write(f'{num_holes}\n')
+        f.write(f'{x1_refsci} {y1_refsci}\n')
+        f.write(f'{x2_refsci} {y2_refsci}\n')
+        f.write(f'{x3_refsci} {y3_refsci}\n')
+        f.write(f'{x4_refsci} {y4_refsci}\n')
+
+    cmd = ['computeOverlapArea']
+    exitcode,listing = execute_command_and_return_stdout(cmd)
+
+    print("exitcode =",exitcode)
+
+    for line in listing.split('\n'):
+        line = line.strip()
+        if line != "":
+            print(line)
+            a = line.split("=")
+            label = a[0]
+            intersecting_area = a[1]
+            print(label,intersecting_area)
+
+
+    percent_overlap = 100.0 * float(intersecting_area) / (naxis1_sci * naxis2_sci)
+
+    print("percent_overlap =",percent_overlap)
 
     print("Done computing overlap area...")
 
