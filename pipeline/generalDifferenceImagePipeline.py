@@ -36,6 +36,10 @@ print("swvers =", swvers)
 print("cfg_filename_only =", cfg_filename_only)
 
 
+# Assume the RAPID-pipeline git repo is located under /code.
+
+rapid_sw = "/code"
+
 
 # Specify science image.
 
@@ -323,7 +327,7 @@ if __name__ == '__main__':
 
     # Compute additional quantities needed for later populating refimmeta table in RAPID operations database.
 
-    sextractor_refimage_paramsfile = "/code/cdf/rapidSexParamsRefImage.inp";
+    sextractor_refimage_paramsfile = cdf_path + "/rapidSexParamsRefImage.inp";
     params_to_get_refimage = ["FWHM_IMAGE"]
 
     vals_refimage = util.parse_ascii_text_sextractor_catalog(filename_refimage_catalog,
@@ -546,8 +550,8 @@ if __name__ == '__main__':
     # Subtract background from science image.  Since the reference image has been swarped,
     # it already has the background subtracted.
 
-    bkgest_code = '/code/c/bin/bkgest'
-    bkgest_include_dir = '/code/c/include'
+    bkgest_code = rapid_sw + '/c/bin/bkgest'
+    bkgest_include_dir = rapid_sw + '/c/include'
     filename_bkg_subbed_science_image = 'bkg_subbed_science_image.fits'
     filename_global_clippedmean_sciimage_tbl = 'global_clippedmean_science_image.tbl'
 
@@ -648,12 +652,12 @@ if __name__ == '__main__':
     # Usage: python py_zogy.py <NewImage> <RefImage> <NewPSF> <RefPSF> <NewSigmaImage> <RefSigmaImage>
     #                    <NewSigmaMode> <RefSigmaMode> <AstUncertX> <AstUncertY> <DiffImage> <DiffPSF> <ScorrImage>
     #
-    # Assume top-level directory of rapid git repo is mapped to /code inside Docker container.
+    # Assume top-level directory of RAPID-pipeline git repo is mapped to /code inside Docker container.
     #################################################################################################################
 
 
     python_cmd = '/usr/bin/python3.11'
-    zogy_code = '/code/modules/zogy/v21Aug2018/py_zogy.py'
+    zogy_code = rapid_sw + '/modules/zogy/v21Aug2018/py_zogy.py'
     filename_diffimage = 'diffimage.fits'
     filename_diffpsf = 'diffpsf.fits'
     filename_scorrimage = 'scorrimage.fits'
@@ -742,14 +746,14 @@ if __name__ == '__main__':
     # image, then use to perform aperture phot on difference image to generate
     # raw ascii catalog file.
 
-    sextractor_diffimage_paramsfile = "/code/cdf/rapidSexParamsDiffImage.inp";
+    sextractor_diffimage_paramsfile = cdf_path + "/rapidSexParamsDiffImage.inp";
 
     sextractor_diffimage_dict["sextractor_detection_image".lower()] = filename_scorrimage_masked
     sextractor_diffimage_dict["sextractor_input_image".lower()] = filename_diffimage_masked
     sextractor_diffimage_dict["sextractor_WEIGHT_IMAGE".lower()] = filename_weight_image
     sextractor_diffimage_dict["sextractor_PARAMETERS_NAME".lower()] = sextractor_diffimage_paramsfile
-    sextractor_diffimage_dict["sextractor_FILTER_NAME".lower()] = "/code/cdf/rapidSexDiffImageFilter.conv"
-    sextractor_diffimage_dict["sextractor_STARNNW_NAME".lower()] = "/code/cdf/rapidSexDiffImageStarGalaxyClassifier.nnw"
+    sextractor_diffimage_dict["sextractor_FILTER_NAME".lower()] = cdf_path + "/rapidSexDiffImageFilter.conv"
+    sextractor_diffimage_dict["sextractor_STARNNW_NAME".lower()] = cdf_path + "/rapidSexDiffImageStarGalaxyClassifier.nnw"
     sextractor_diffimage_dict["sextractor_CATALOG_NAME".lower()] = filename_diffimage_sextractor_catalog
     sextractor_cmd = util.build_sextractor_command_line_args(sextractor_diffimage_dict)
     exitcode_from_sextractor = util.execute_command(sextractor_cmd)
@@ -850,7 +854,7 @@ if __name__ == '__main__':
 
         # Cannot run under python3.11 because scikit-learn fails to install.
         python_cmd = '/usr/bin/python3'
-        sfft_code = '/code/modules/sfft/sfft_rapid.py'
+        sfft_code = rapid_sw + '/modules/sfft/sfft_rapid.py'
         filename_scifile = filename_bkg_subbed_science_image
         filename_reffile = output_resampled_gainmatched_reference_image
         filename_scisegm = 'sfftscisegm.fits'
@@ -915,14 +919,14 @@ if __name__ == '__main__':
             # image, then use to perform aperture phot on difference image to generate
             # raw ascii catalog file.
 
-            sextractor_diffimage_paramsfile = "/code/cdf/rapidSexParamsDiffImage.inp";
+            sextractor_diffimage_paramsfile = cdf_path + "/rapidSexParamsDiffImage.inp";
 
             sextractor_diffimage_dict["sextractor_detection_image".lower()] = filename_sfftdiffimage
             sextractor_diffimage_dict["sextractor_input_image".lower()] = filename_sfftdiffimage
             sextractor_diffimage_dict["sextractor_WEIGHT_IMAGE".lower()] = filename_weight_image
             sextractor_diffimage_dict["sextractor_PARAMETERS_NAME".lower()] = sextractor_diffimage_paramsfile
-            sextractor_diffimage_dict["sextractor_FILTER_NAME".lower()] = "/code/cdf/rapidSexDiffImageFilter.conv"
-            sextractor_diffimage_dict["sextractor_STARNNW_NAME".lower()] = "/code/cdf/rapidSexDiffImageStarGalaxyClassifier.nnw"
+            sextractor_diffimage_dict["sextractor_FILTER_NAME".lower()] = cdf_path + "/rapidSexDiffImageFilter.conv"
+            sextractor_diffimage_dict["sextractor_STARNNW_NAME".lower()] = cdf_path + "/rapidSexDiffImageStarGalaxyClassifier.nnw"
             sextractor_diffimage_dict["sextractor_CATALOG_NAME".lower()] = filename_sfftdiffimage_sextractor_catalog
             sextractor_cmd = util.build_sextractor_command_line_args(sextractor_diffimage_dict)
             exitcode_from_sextractor = util.execute_command(sextractor_cmd)
