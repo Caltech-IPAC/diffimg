@@ -19,9 +19,9 @@ import re
 
 to_zone = tz.gettz('America/Los_Angeles')
 
-import modules.utils.pipeline_subs as util
-#import pipeline.referenceImageSubs as rfis
-#import pipeline.differenceImageSubs as dfis
+import modules.utils.gdip_subs as util
+import pipeline.gdip_referenceImageSubs as rfis
+import pipeline.gdip_differenceImageSubs as dfis
 
 start_time_benchmark = time.time()
 start_time_benchmark_at_start = start_time_benchmark
@@ -36,6 +36,16 @@ print("swvers =", swvers)
 print("cfg_filename_only =", cfg_filename_only)
 
 
+
+# Specify science image.
+
+input_fits_file = 'ADP.2022-07-27T14_56_30.297.fits'
+hdr_num = 1                                                    # Second HDU
+jid = 1
+fid = 2
+rfid = 3
+
+
 # Compute processing datetime (UT) and processing datetime (Pacific time).
 
 datetime_utc_now = datetime.now(UTC)
@@ -45,12 +55,6 @@ proc_pt_datetime_started = datetime_pt_now.strftime('%Y-%m-%dT%H:%M:%S PT')
 
 print("proc_utc_datetime =",proc_utc_datetime)
 print("proc_pt_datetime_started =",proc_pt_datetime_started)
-
-
-# Specify science image.
-
-input_fits_file = 'ADP.2022-07-27T14_56_30.297.fits'
-hdr_num = 1                                                    # Second HDU
 
 
 # Get the configuration parameters.
@@ -81,168 +85,7 @@ config_input_filename = cfg_path + "/" + cfg_filename_only
 config_input = configparser.ConfigParser()
 config_input.read(config_input_filename)
 
-verbose = int(config_input['JOB_PARAMS']['verbose'])
-debug = int(config_input['JOB_PARAMS']['debug'])
-job_info_s3_bucket_base = config_input['JOB_PARAMS']['job_info_s3_bucket_base']
-product_s3_bucket_base = config_input['JOB_PARAMS']['product_s3_bucket_base']
-job_config_filename_base = config_input['JOB_PARAMS']['job_config_filename_base']
-product_config_filename_base = config_input['JOB_PARAMS']['product_config_filename_base']
-refimage_psf_s3_bucket_dir = config_input['JOB_PARAMS']['refimage_psf_s3_bucket_dir']
-refimage_psf_filename = config_input['JOB_PARAMS']['refimage_psf_filename']
-
-sca_gain = float(config_input['INSTRUMENT']['sca_gain'])
-
-ppid = int(config_input['SCI_IMAGE']['ppid'])
-saturation_level_sciimage = config_input['SCI_IMAGE']['saturation_level']
-
-ppid_refimage = int(config_input['REF_IMAGE']['ppid_refimage'])
-max_n_images_to_coadd = int(config_input['REF_IMAGE']['max_n_images_to_coadd'])
-naxis1_refimage = int(config_input['REF_IMAGE']['naxis1_refimage'])
-naxis2_refimage = int(config_input['REF_IMAGE']['naxis2_refimage'])
-cdelt1_refimage = float(config_input['REF_IMAGE']['cdelt1_refimage'])
-cdelt2_refimage = float(config_input['REF_IMAGE']['cdelt2_refimage'])
-crota2_refimage = float(config_input['REF_IMAGE']['crota2_refimage'])
-
-
-# Get the awaicgen parameters.  Some of these parameters will be overwritten by this script.
-# Do not convert to numerical types, since these will just be passed through (except for those
-# overwritten by this script).
-
-awaicgen_dict = {}
-
-awaicgen_dict["awaicgen_input_images_list_file"] = config_input['AWAICGEN']['awaicgen_input_images_list_file']
-awaicgen_dict["awaicgen_input_uncert_list_file"] = config_input['AWAICGEN']['awaicgen_input_uncert_list_file']
-awaicgen_dict["awaicgen_mosaic_size_x"] = config_input['AWAICGEN']['awaicgen_mosaic_size_x']
-awaicgen_dict["awaicgen_mosaic_size_y"] = config_input['AWAICGEN']['awaicgen_mosaic_size_y']
-awaicgen_dict["awaicgen_RA_center"] = config_input['AWAICGEN']['awaicgen_RA_center']
-awaicgen_dict["awaicgen_Dec_center"] = config_input['AWAICGEN']['awaicgen_Dec_center']
-awaicgen_dict["awaicgen_mosaic_rotation"] = config_input['AWAICGEN']['awaicgen_mosaic_rotation']
-awaicgen_dict["awaicgen_pixelscale_factor"] = config_input['AWAICGEN']['awaicgen_pixelscale_factor']
-awaicgen_dict["awaicgen_pixelscale_absolute"] = config_input['AWAICGEN']['awaicgen_pixelscale_absolute']
-awaicgen_dict["awaicgen_mos_cellsize_factor"] = config_input['AWAICGEN']['awaicgen_mos_cellsize_factor']
-awaicgen_dict["awaicgen_drizzle_factor"] = config_input['AWAICGEN']['awaicgen_drizzle_factor']
-awaicgen_dict["awaicgen_inv_var_weight_flag"] = config_input['AWAICGEN']['awaicgen_inv_var_weight_flag']
-awaicgen_dict["awaicgen_pixelflux_scale_flag"] = config_input['AWAICGEN']['awaicgen_pixelflux_scale_flag']
-awaicgen_dict["awaicgen_simple_coadd_flag"] = config_input['AWAICGEN']['awaicgen_simple_coadd_flag']
-awaicgen_dict["awaicgen_num_threads"] = config_input['AWAICGEN']['awaicgen_num_threads']
-awaicgen_dict["awaicgen_unc_sigfigs_retained"] = config_input['AWAICGEN']['awaicgen_unc_sigfigs_retained']
-awaicgen_dict["awaicgen_output_mosaic_image_file"] = config_input['AWAICGEN']['awaicgen_output_mosaic_image_file']
-awaicgen_dict["awaicgen_output_mosaic_cov_map_file"] = config_input['AWAICGEN']['awaicgen_output_mosaic_cov_map_file']
-awaicgen_dict["awaicgen_output_mosaic_uncert_image_file"] = config_input['AWAICGEN']['awaicgen_output_mosaic_uncert_image_file']
-awaicgen_dict["awaicgen_debug"] = config_input['AWAICGEN']['awaicgen_debug']
-awaicgen_dict["awaicgen_verbose"] = config_input['AWAICGEN']['awaicgen_verbose']
-
-
-# Update the awaicgen dictionary for quantities that do not vary with sky location.
-
-pixel_scale = math.fabs(cdelt1_refimage)
-awaicgen_mosaic_size_x = pixel_scale * float(naxis1_refimage)
-awaicgen_mosaic_size_y = pixel_scale * float(naxis2_refimage)
-
-awaicgen_dict["awaicgen_mosaic_size_x"] = str(awaicgen_mosaic_size_x)
-awaicgen_dict["awaicgen_mosaic_size_y"] = str(awaicgen_mosaic_size_y)
-awaicgen_dict["awaicgen_mosaic_rotation"] = str(crota2_refimage)
-
-
-# Get the ZOGY parameters.
-# Do not convert to numerical types, since these will just be passed through.
-
-zogy_dict = {}
-
-zogy_dict["astrometric_uncert_x"] = config_input['ZOGY']['astrometric_uncert_x']
-zogy_dict["astrometric_uncert_y"] = config_input['ZOGY']['astrometric_uncert_y']
-zogy_dict["zogy_output_diffimage_file"] = config_input['ZOGY']['zogy_output_diffimage_file']
-zogy_dict["post_zogy_keep_diffimg_lower_cov_map_thresh"] = config_input['ZOGY']['post_zogy_keep_diffimg_lower_cov_map_thresh']
-
-
-# Get the swarp parameters.  Some of these parameters will be overwritten by this script.
-# Do not convert to numerical types, since these will just be passed through.
-
-swarp_dict = {}
-
-swarp_dict["swarp_input_image"] = config_input['SWARP']['swarp_input_image']
-swarp_dict["swarp_IMAGEOUT_NAME"] = config_input['SWARP']['swarp_IMAGEOUT_NAME']
-swarp_dict["swarp_WEIGHTOUT_NAME"] = config_input['SWARP']['swarp_WEIGHTOUT_NAME']
-swarp_dict["swarp_HEADER_ONLY"] = config_input['SWARP']['swarp_HEADER_ONLY']
-swarp_dict["swarp_HEADER_SUFFIX"] = config_input['SWARP']['swarp_HEADER_SUFFIX']
-swarp_dict["swarp_WEIGHT_TYPE"] = config_input['SWARP']['swarp_WEIGHT_TYPE']
-swarp_dict["swarp_RESCALE_WEIGHTS"] = config_input['SWARP']['swarp_RESCALE_WEIGHTS']
-swarp_dict["swarp_WEIGHT_SUFFIX"] = config_input['SWARP']['swarp_WEIGHT_SUFFIX']
-swarp_dict["swarp_WEIGHT_IMAGE"] = config_input['SWARP']['swarp_WEIGHT_IMAGE']
-swarp_dict["swarp_WEIGHT_THRESH"] = config_input['SWARP']['swarp_WEIGHT_THRESH']
-swarp_dict["swarp_COMBINE"] = config_input['SWARP']['swarp_COMBINE']
-swarp_dict["swarp_COMBINE_TYPE"] = config_input['SWARP']['swarp_COMBINE_TYPE']
-swarp_dict["swarp_CLIP_AMPFRAC"] = config_input['SWARP']['swarp_CLIP_AMPFRAC']
-swarp_dict["swarp_CLIP_SIGMA"] = config_input['SWARP']['swarp_CLIP_SIGMA']
-swarp_dict["swarp_CLIP_WRITELOG"] = config_input['SWARP']['swarp_CLIP_WRITELOG']
-swarp_dict["swarp_CLIP_LOGNAME"] = config_input['SWARP']['swarp_CLIP_LOGNAME']
-swarp_dict["swarp_BLANK_BADPIXELS"] = config_input['SWARP']['swarp_BLANK_BADPIXELS']
-swarp_dict["swarp_CELESTIAL_TYPE"] = config_input['SWARP']['swarp_CELESTIAL_TYPE']
-swarp_dict["swarp_PROJECTION_TYPE"] = config_input['SWARP']['swarp_PROJECTION_TYPE']
-swarp_dict["swarp_PROJECTION_ERR"] = config_input['SWARP']['swarp_PROJECTION_ERR']
-swarp_dict["swarp_CENTER_TYPE"] = config_input['SWARP']['swarp_CENTER_TYPE']
-swarp_dict["swarp_CENTER"] = config_input['SWARP']['swarp_CENTER']
-swarp_dict["swarp_PIXELSCALE_TYPE"] = config_input['SWARP']['swarp_PIXELSCALE_TYPE']
-swarp_dict["swarp_PIXEL_SCALE"] = config_input['SWARP']['swarp_PIXEL_SCALE']
-swarp_dict["swarp_IMAGE_SIZE"] = config_input['SWARP']['swarp_IMAGE_SIZE']
-swarp_dict["swarp_RESAMPLE"] = config_input['SWARP']['swarp_RESAMPLE']
-swarp_dict["swarp_RESAMPLE_DIR"] = config_input['SWARP']['swarp_RESAMPLE_DIR']
-swarp_dict["swarp_RESAMPLE_SUFFIX"] = config_input['SWARP']['swarp_RESAMPLE_SUFFIX']
-swarp_dict["swarp_RESAMPLING_TYPE"] = config_input['SWARP']['swarp_RESAMPLING_TYPE']
-swarp_dict["swarp_OVERSAMPLING"] = config_input['SWARP']['swarp_OVERSAMPLING']
-swarp_dict["swarp_INTERPOLATE"] = config_input['SWARP']['swarp_INTERPOLATE']
-swarp_dict["swarp_FSCALASTRO_TYPE"] = config_input['SWARP']['swarp_FSCALASTRO_TYPE']
-swarp_dict["swarp_FSCALE_KEYWORD"] = config_input['SWARP']['swarp_FSCALE_KEYWORD']
-swarp_dict["swarp_FSCALE_DEFAULT"] = config_input['SWARP']['swarp_FSCALE_DEFAULT']
-swarp_dict["swarp_GAIN_KEYWORD"] = config_input['SWARP']['swarp_GAIN_KEYWORD']
-swarp_dict["swarp_GAIN_DEFAULT"] = config_input['SWARP']['swarp_GAIN_DEFAULT']
-swarp_dict["swarp_SATLEV_KEYWORD"] = config_input['SWARP']['swarp_SATLEV_KEYWORD']
-swarp_dict["swarp_SATLEV_DEFAULT"] = config_input['SWARP']['swarp_SATLEV_DEFAULT']
-swarp_dict["swarp_SUBTRACT_BACK"] = config_input['SWARP']['swarp_SUBTRACT_BACK']
-swarp_dict["swarp_BACK_TYPE"] = config_input['SWARP']['swarp_BACK_TYPE']
-swarp_dict["swarp_BACK_DEFAULT"] = config_input['SWARP']['swarp_BACK_DEFAULT']
-swarp_dict["swarp_BACK_SIZE"] = config_input['SWARP']['swarp_BACK_SIZE']
-swarp_dict["swarp_BACK_FILTERSIZE"] = config_input['SWARP']['swarp_BACK_FILTERSIZE']
-swarp_dict["swarp_BACK_FILTTHRESH"] = config_input['SWARP']['swarp_BACK_FILTTHRESH']
-swarp_dict["swarp_VMEM_DIR"] = config_input['SWARP']['swarp_VMEM_DIR']
-swarp_dict["swarp_VMEM_MAX"] = config_input['SWARP']['swarp_VMEM_MAX']
-swarp_dict["swarp_MEM_MAX"] = config_input['SWARP']['swarp_MEM_MAX']
-swarp_dict["swarp_COMBINE_BUFSIZE"] = config_input['SWARP']['swarp_COMBINE_BUFSIZE']
-swarp_dict["swarp_DELETE_TMPFILES"] = config_input['SWARP']['swarp_DELETE_TMPFILES']
-swarp_dict["swarp_COPY_KEYWORDS"] = config_input['SWARP']['swarp_COPY_KEYWORDS']
-swarp_dict["swarp_WRITE_FILEINFO"] = config_input['SWARP']['swarp_WRITE_FILEINFO']
-swarp_dict["swarp_WRITE_XML"] = config_input['SWARP']['swarp_WRITE_XML']
-swarp_dict["swarp_VERBOSE_TYPE"] = config_input['SWARP']['swarp_VERBOSE_TYPE']
-swarp_dict["swarp_NNODES"] = config_input['SWARP']['swarp_NNODES']
-swarp_dict["swarp_NODE_INDEX"] = config_input['SWARP']['swarp_NODE_INDEX']
-swarp_dict["swarp_NTHREADS"] = config_input['SWARP']['swarp_NTHREADS']
-swarp_dict["swarp_NOPENFILES_MAX"] = config_input['SWARP']['swarp_NOPENFILES_MAX']
-
-
-# Get the sextractor parameters.  Some of these parameters will be overwritten by this script.
-# Do not convert to numerical types, since these will just be passed through.
-
-sextractor_diffimage_dict = config_input['SEXTRACTOR_DIFFIMAGE']
-sextractor_sciimage_dict = config_input['SEXTRACTOR_SCIIMAGE']
-
-sextractor_refimage_dict = {}
-for key in config_input['SEXTRACTOR_REFIMAGE'].keys():
-    #print('Input SEXTRACTOR_REFIMAGE: key, value =',key,config_input['SEXTRACTOR_REFIMAGE'][key])
-    sextractor_refimage_dict[key] = config_input['SEXTRACTOR_REFIMAGE'][key]
-
-bkgest_dict = config_input['BKGEST']
-
-gainmatch_dict = config_input['GAINMATCH']
-psfcat_diffimage_dict = config_input['PSFCAT_DIFFIMAGE']
-
-sextractor_gainmatch_dict = {}
-for key in config_input['SEXTRACTOR_GAINMATCH'].keys():
-    #print('Input SEXTRACTOR_GAINMATCH: key, value =',key,config_input['SEXTRACTOR_GAINMATCH'][key])
-    sextractor_gainmatch_dict[key] = config_input['SEXTRACTOR_GAINMATCH'][key]
-
-sfft_dict = config_input['SFFT']
-
-naive_diffimage_dict = config_input['NAIVE_DIFFIMAGE']
+print("config_input_filename =",config_input_filename)
 
 
 #-------------------------------------------------------------------------------------------------------------
@@ -363,6 +206,863 @@ if __name__ == '__main__':
 
 
     util.compute_image_overlap_area(w_sci,naxis1,naxis2,x0,y0,x1,y1,x2,y2,x3,y3,x4,y4,fits_file_ref)
+
+
+    with fits.open(fits_file_ref) as hdul:
+
+        nframes_refimage = hdul[0].header["NUMFRMS"]
+
+
+
+    # Get job configuration parameters.
+
+    verbose = int(config_input['JOB_PARAMS']['verbose'])
+    debug = int(config_input['JOB_PARAMS']['debug'])
+    refimage_psf_filename = config_input['JOB_PARAMS']['refimage_psf_filename']
+
+    product_config_filename_base = config_input['JOB_PARAMS']['product_config_filename_base']
+
+    sca_gain = float(config_input['INSTRUMENT']['sca_gain'])
+
+    ppid_sciimage = int(config_input['SCI_IMAGE']['ppid'])
+    saturation_level_sciimage = float(config_input['SCI_IMAGE']['saturation_level'])
+
+
+    gain_refimage = float(config_input['REF_IMAGE']['gain_refimage'])
+    ppid_refimage = int(config_input['REF_IMAGE']['ppid_refimage'])
+    max_n_images_to_coadd = int(config_input['REF_IMAGE']['max_n_images_to_coadd'])
+    naxis1_refimage = int(config_input['REF_IMAGE']['naxis1_refimage'])
+    naxis2_refimage = int(config_input['REF_IMAGE']['naxis2_refimage'])
+    cdelt1_refimage = float(config_input['REF_IMAGE']['cdelt1_refimage'])
+    cdelt2_refimage = float(config_input['REF_IMAGE']['cdelt2_refimage'])
+    crota2_refimage = float(config_input['REF_IMAGE']['crota2_refimage'])
+
+    astrometric_uncert_x = float(config_input['ZOGY']['astrometric_uncert_x'])
+    astrometric_uncert_y = float(config_input['ZOGY']['astrometric_uncert_y'])
+    zogy_output_diffimage_file = config_input['ZOGY']['zogy_output_diffimage_file']
+    post_zogy_keep_diffimg_lower_cov_map_thresh = float(config_input['ZOGY']['post_zogy_keep_diffimg_lower_cov_map_thresh'])
+
+    awaicgen_dict = config_input['AWAICGEN']
+
+    swarp_dict = config_input['SWARP']
+
+    sextractor_diffimage_dict = config_input['SEXTRACTOR_DIFFIMAGE']
+    sextractor_sciimage_dict = config_input['SEXTRACTOR_SCIIMAGE']
+    sextractor_refimage_dict = config_input['SEXTRACTOR_REFIMAGE']
+    bkgest_dict = config_input['BKGEST']
+    gainmatch_dict = config_input['GAINMATCH']
+    psfcat_diffimage_dict = config_input['PSFCAT_DIFFIMAGE']
+    sextractor_gainmatch_dict = config_input['SEXTRACTOR_GAINMATCH']
+    sfft_dict = config_input['SFFT']
+    naive_diffimage_dict = config_input['NAIVE_DIFFIMAGE']
+
+    print("max_n_images_to_coadd =", max_n_images_to_coadd)
+
+    saturation_level_refimage = float(sextractor_refimage_dict["sextractor_SATUR_LEVEL".lower()])
+
+
+
+    # Code-timing benchmark.
+
+    end_time_benchmark = time.time()
+    print("Elapsed time in seconds after downloading reference image =",end_time_benchmark - start_time_benchmark)
+    start_time_benchmark = end_time_benchmark
+
+
+
+    # Compute reference-image statistics.
+
+    n_sigma = 3.0
+    hdu_index = 0
+
+    stats_refimage = util.fits_data_statistics_with_clipping(fits_file_ref,\
+                                                             n_sigma,\
+                                                             hdu_index,\
+                                                             saturation_level_refimage)
+
+    avg_refimage = stats_refimage["clippedavg"]
+    std_refimage = stats_refimage["clippedstd"]
+    cnt_refimage = stats_refimage["nkept"]
+    noutliers_refimage = stats_refimage["noutliers"]
+    gmed_refimage = stats_refimage["gmed"]
+    datascale_refimage = stats_refimage["gsigma"]
+    gmin_refimage = stats_refimage["gdatamin"]
+    gmax_refimage = stats_refimage["gdatamax"]
+    npixsat_refimage = stats_refimage["satcount"]
+    npixnan_refimage = stats_refimage["nancount"]
+
+
+    # Compute reference-image uncertainty image via simple model (photon noise only).
+    # Resize images to 4089x4089 (odd number of pixels on each side).
+
+    fits_file_ref_uncert = fits_file_ref.replace(".fits","_unc.fits")
+
+    util.compute_uncertainty_image_via_simple_model(fits_file_ref,
+                                                    hdu_index,
+                                                    fits_file_ref_uncert,
+                                                    gain_refimage,
+                                                    nframes_refimage)
+
+
+
+
+
+
+
+
+    # Generate reference-image catalog.
+
+    filename_refimage_catalog = fits_file_ref.replace(".fits","_secat.txt")
+
+    generateReferenceImageCatalog_return_list = rfis.generateReferenceImageCatalog(fits_file_ref,
+                                                                                   fits_file_ref_uncert,
+                                                                                   sextractor_refimage_dict,
+                                                                                   filename_refimage_catalog)
+
+
+    # Compute additional quantities needed for later populating refimmeta table in RAPID operations database.
+
+    sextractor_refimage_paramsfile = "/code/cdf/rapidSexParamsRefImage.inp";
+    params_to_get_refimage = ["FWHM_IMAGE"]
+
+    vals_refimage = util.parse_ascii_text_sextractor_catalog(filename_refimage_catalog,
+                                                             sextractor_refimage_paramsfile,
+                                                             params_to_get_refimage)
+
+    nsexcatsources_refimage = len(vals_refimage)
+
+    vals_fwhm = []
+    for val in vals_refimage:
+        vals_fwhm.append(float(val[0]))
+
+    np_vals_fwhm = np.array(vals_fwhm)
+
+    fwhmminpix = np.nanmin(np_vals_fwhm)
+    fwhmmaxpix = np.nanmax(np_vals_fwhm)
+    fwhmmedpix = np.nanmedian(np_vals_fwhm)
+
+
+
+
+
+
+
+
+    # TODO:  The following is incorrect, but used as a stopgap for now:
+    # Need to standardize the exposure time of a reference image,
+    # and make sure it is properly scaled to the science image
+    # prior to difference imaging, and also use it to compute saturation_level_refimage_rate.
+
+    saturation_level_refimage_rate = saturation_level_refimage / exptime_sciimage
+
+
+
+
+
+
+
+
+    n_sigma = 3.0
+    hdu_index = 0
+
+    stats_refimage = util.fits_data_statistics_with_clipping(awaicgen_output_mosaic_image_file,\
+                                                             n_sigma,\
+                                                             hdu_index,\
+                                                             saturation_level_refimage_rate)
+
+    avg_refimage = stats_refimage["clippedavg"]
+    std_refimage = stats_refimage["clippedstd"]
+    cnt_refimage = stats_refimage["nkept"]
+    noutliers_refimage = stats_refimage["noutliers"]
+    gmed_refimage = stats_refimage["gmed"]
+    datascale_refimage = stats_refimage["gsigma"]
+    gmin_refimage = stats_refimage["gdatamin"]
+    gmax_refimage = stats_refimage["gdatamax"]
+    npixsat_refimage = stats_refimage["satcount"]
+    npixnan_refimage = stats_refimage["nancount"]
+
+
+    # Code-timing benchmark.
+
+    end_time_benchmark = time.time()
+    print("Elapsed time in seconds after downloading or generating reference image =",
+        end_time_benchmark - start_time_benchmark)
+    start_time_benchmark = end_time_benchmark
+
+
+    # Populate config-file dictionary for products.
+
+    product_config_ini_filename = product_config_filename_base + str(jid) + ".ini"
+
+    product_config = configparser.ConfigParser()
+
+    product_config['JOB_PARAMS'] = {'debug': str(debug),
+                                 'swname': swname,
+                                 'swvers': swvers}
+
+    product_config['JOB_PARAMS']['jid'] = str(jid)
+    product_config['JOB_PARAMS']['job_proc_date'] = job_proc_date
+    product_config['JOB_PARAMS']['verbose'] = str(verbose)
+    product_config['JOB_PARAMS']['job_started'] = str(proc_pt_datetime_started)
+
+
+    product_config['REF_IMAGE'] = {}
+
+    product_config['REF_IMAGE']['rfid'] = str(rfid)
+    product_config['REF_IMAGE']['ppid'] = str(ppid_sciimage)
+    product_config['REF_IMAGE']['awaicgen_output_mosaic_image_file_checksum'] = checksum_refimage
+
+    product_config['REF_IMAGE']['awaicgen_output_mosaic_image_file'] = mosaic_image_name_for_db_record
+    product_config['REF_IMAGE']['awaicgen_output_mosaic_cov_map_file'] = mosaic_cov_map_name_for_db_record
+    product_config['REF_IMAGE']['awaicgen_output_mosaic_uncert_image_file'] = mosaic_uncert_image_name_for_db_record
+    product_config['REF_IMAGE']['awaicgen_output_mosaic_image_status'] = str(1)
+    product_config['REF_IMAGE']['awaicgen_output_mosaic_image_infobits'] = str(infobits_refimage)
+
+    product_config['REF_IMAGE']['sextractor_refimage_catalog_filename_for_db'] = refimage_catalog_name_for_db_record
+    product_config['REF_IMAGE']['sextractor_refimage_catalog_checksum'] = checksum_refimage_catalog
+    product_config['REF_IMAGE']['sextractor_refimage_catalog_cattype'] = str(1)
+    product_config['REF_IMAGE']['sextractor_refimage_catalog_status'] = str(1)
+
+    product_config['REF_IMAGE']['nframes'] = str(nframes)
+    product_config['REF_IMAGE']['npixsat'] = str(npixsat_refimage)
+    product_config['REF_IMAGE']['npixnan'] = str(npixnan_refimage)
+    product_config['REF_IMAGE']['clmean'] = str(avg_refimage)
+    product_config['REF_IMAGE']['clstddev'] = str(std_refimage)
+    product_config['REF_IMAGE']['clnoutliers'] = str(noutliers_refimage)
+    product_config['REF_IMAGE']['gmedian'] = str(gmed_refimage)
+    product_config['REF_IMAGE']['datascale'] = str(datascale_refimage)
+    product_config['REF_IMAGE']['gmin'] = str(gmin_refimage)
+    product_config['REF_IMAGE']['gmax'] = str(gmax_refimage)
+    product_config['REF_IMAGE']['cov5percent'] = str(cov5percent)
+    product_config['REF_IMAGE']['medncov'] = str(medncov)
+    product_config['REF_IMAGE']['medpixunc'] = str(medpixunc)
+    product_config['REF_IMAGE']['fwhmmedpix'] = str(fwhmmedpix)
+    product_config['REF_IMAGE']['fwhmminpix'] = str(fwhmminpix)
+    product_config['REF_IMAGE']['fwhmmaxpix'] = str(fwhmmaxpix)
+    product_config['REF_IMAGE']['nsexcatsources'] = str(nsexcatsources_refimage)
+    product_config['REF_IMAGE']['input_images_csv_name_for_download'] = input_images_csv_name_for_download
+
+
+
+
+
+
+    # Unzip the science image gzipped file.
+
+    gunzip_cmd = ['gunzip', science_image_filename_gz]
+    exitcode_from_gunzip = util.execute_command(gunzip_cmd)
+
+    science_image_filename = science_image_filename_gz.replace(".fits.gz",".fits")
+
+
+    # Compute image statistics for image resizing.
+
+    n_sigma = 3.0
+    hdu_index = 1
+
+    stats_sci_img = util.fits_data_statistics_with_clipping(science_image_filename,\
+                                                            n_sigma,\
+                                                            hdu_index,\
+                                                            saturation_level_sciimage)
+
+    avg_sci_img = stats_sci_img["clippedavg"]
+
+
+    # Reformat the Troxel OpenUniverse simulated image FITS file
+    # so that the image data are contained in the PRIMARY header.
+    # Compute uncertainty image via simple model (photon noise only).
+    # Resize images to 4089x4089 (odd number of pixels on each side).
+
+    reformatted_science_image_filename,\
+        reformatted_science_uncert_image_filename =\
+        dfis.reformat_troxel_fits_file_and_compute_uncertainty_image_via_simple_model(science_image_filename,sca_gain,avg_sci_img)
+
+
+    # Swarp the reference image and associated uncertainty image into the distortion frame of the science image.
+    # Since the reference image was made by awaicgen, there is no geometric image distortion,
+    # and, hence, no need to convert from sip to pv distortion, so the following flag is set to False.
+    # Set the following flag to True only for the case where the reference image is a single Roman SCA image.
+
+    hdu_index_for_science_image_data = 0
+    hdu_index_for_reference_image_data = 0
+    pv_convert_flag_for_reference_image_data = False                   # TODO
+
+    sci_fits_file_with_pv,\
+        ref_fits_file_with_pv,\
+        ref_cov_fits_file_with_pv,\
+        ref_uncert_fits_file_with_pv,\
+        output_resampled_reference_image,\
+        output_resampled_reference_cov_map,\
+        output_resampled_reference_uncert_image =\
+        util.resample_reference_image_to_science_image_with_pv_distortion(reformatted_science_image_filename,\
+                                                                          hdu_index_for_science_image_data,\
+                                                                          awaicgen_output_mosaic_image_file,\
+                                                                          awaicgen_output_mosaic_cov_map_file,\
+                                                                          awaicgen_output_mosaic_uncert_image_file,\
+                                                                          hdu_index_for_reference_image_data,\
+                                                                          pv_convert_flag_for_reference_image_data,\
+                                                                          swarp_dict)
+
+
+    # Code-timing benchmark.
+
+    end_time_benchmark = time.time()
+    print("Elapsed time in seconds after swarping images =",end_time_benchmark - start_time_benchmark)
+    start_time_benchmark = end_time_benchmark
+
+
+
+
+    # Compute image statistics for ZOGY.
+
+    n_sigma = 3.0
+    hdu_index = 0
+
+    stats_sci_img = util.fits_data_statistics_with_clipping(reformatted_science_image_filename,\
+                                                            n_sigma,\
+                                                            hdu_index,\
+                                                            saturation_level_sciimage)
+
+    avg_sci_img = stats_sci_img["clippedavg"]
+    std_sci_img = stats_sci_img["clippedstd"]
+    cnt_sci_img = stats_sci_img["nkept"]
+
+    stats_ref_img = util.fits_data_statistics_with_clipping(output_resampled_reference_image,\
+                                                            n_sigma,\
+                                                            hdu_index,\
+                                                            saturation_level_refimage)
+
+    avg_ref_img = stats_ref_img["clippedavg"]
+    std_ref_img = stats_ref_img["clippedstd"]
+    cnt_ref_img = stats_ref_img["nkept"]
+
+    print("avg_sci_img,std_sci_img,cnt_sci_img =",avg_sci_img,std_sci_img,cnt_sci_img)
+    print("avg_ref_img,std_ref_img,cnt_ref_img =",avg_ref_img,std_ref_img,cnt_ref_img)
+
+
+
+
+    # Subtract background from science image.  Since the reference image has been swarped,
+    # it already has the background subtracted.
+
+    bkgest_code = '/code/c/bin/bkgest'
+    bkgest_include_dir = '/code/c/include'
+    filename_bkg_subbed_science_image = 'bkg_subbed_science_image.fits'
+    filename_global_clippedmean_sciimage_tbl = 'global_clippedmean_science_image.tbl'
+
+    bkgest_cmd = [bkgest_code,
+                  '-i',
+                  sci_fits_file_with_pv,
+                  '-f',
+                  bkgest_dict["output_image_type"],
+                  '-c',
+                  bkgest_dict["clippedmean_calc_type"],
+                  '-g',
+                  bkgest_dict["local_clippedmean_grid_spacing"],
+                  '-w',
+                  bkgest_dict["local_clippedmean_input_window"],
+                  '-a',
+                  bkgest_include_dir,
+                  '-ot',
+                  filename_global_clippedmean_sciimage_tbl,
+                  '-o2',
+                  filename_bkg_subbed_science_image]
+
+    exitcode_from_bkgest = util.execute_command(bkgest_cmd)
+
+
+    # Code-timing benchmark.
+
+    end_time_benchmark = time.time()
+    print("Elapsed time in seconds after running bkgest on science image =",
+        end_time_benchmark - start_time_benchmark)
+    start_time_benchmark = end_time_benchmark
+
+
+    ######################################################################################
+    # Gain-match science and reference images by generating SExtractor catalogs for each
+    # and then computing scale factor.  To apply, multiply reference image by scalefacref.
+    ######################################################################################
+
+    scalefac,dxrmsfin,dyrmsfin,dxmedianfin,dymedianfin = dfis.gainMatchScienceAndReferenceImages(filename_bkg_subbed_science_image,
+                                                                                                 reformatted_science_uncert_image_filename,
+                                                                                                 output_resampled_reference_image,
+                                                                                                 output_resampled_reference_uncert_image,
+                                                                                                 gainmatch_dict,
+                                                                                                 sextractor_gainmatch_dict,
+                                                                                                 astrometric_uncert_x,
+                                                                                                 astrometric_uncert_y)
+
+    print("scalefac,dxrmsfin,dyrmsfin,dxmedianfin,dymedianfin =",scalefac,dxrmsfin,dyrmsfin,dxmedianfin,dymedianfin)
+
+    scalefacref = 1. / scalefac
+
+
+    # Compute resampled gain-matched reference image.
+
+    output_resampled_gainmatched_reference_image = output_resampled_reference_image.replace(".fits","_gainmatched.fits")
+    util.scale_image_data(output_resampled_reference_image,scalefacref,output_resampled_gainmatched_reference_image)
+
+
+    # Code-timing benchmark.
+
+    end_time_benchmark = time.time()
+    print("Elapsed time in seconds after running gainMatchScienceAndReferenceImages =",
+        end_time_benchmark - start_time_benchmark)
+    start_time_benchmark = end_time_benchmark
+
+
+    # Replace NaNs, if any, in ZOGY input images.  Use the same saturation level rate since they are gain-matched.
+
+    saturation_value_rate_sciimage = saturation_level_sciimage / exptime_sciimage
+    nan_indices_sciimage = util.replace_nans_with_sat_val_rate(filename_bkg_subbed_science_image,saturation_value_rate_sciimage)
+    nan_indices_refimage = util.replace_nans_with_sat_val_rate(output_resampled_gainmatched_reference_image,saturation_value_rate_sciimage)
+
+
+    # Apply subpixel orthogonal offsets to ZOGY input reference image.
+
+    util.apply_subpixel_orthogonal_offsets(output_resampled_gainmatched_reference_image,dxmedianfin,dymedianfin)
+
+
+    # Tranpose science-image PSF for rimtimsim data.
+
+    if "rimtimsim" in science_image_filename:
+
+        util.transpose_image_data(filename_psf)
+
+
+    # Code-timing benchmark.
+
+    end_time_benchmark = time.time()
+    print("Elapsed time in seconds after replacing NaNs, applying image offsets, etc. =",
+        end_time_benchmark - start_time_benchmark)
+    start_time_benchmark = end_time_benchmark
+
+
+    #################################################################################################################
+    # The image data in science_image_filename and sci_fits_file_with_pv FITS files are the same, only the
+    # representation of geometric distortion in the FITS headers are different (sip versus pv).
+    #
+    # ZOGY only cares about the image data, not what is in the FITS headers.
+    # Usage: python py_zogy.py <NewImage> <RefImage> <NewPSF> <RefPSF> <NewSigmaImage> <RefSigmaImage>
+    #                    <NewSigmaMode> <RefSigmaMode> <AstUncertX> <AstUncertY> <DiffImage> <DiffPSF> <ScorrImage>
+    #
+    # Assume top-level directory of rapid git repo is mapped to /code inside Docker container.
+    #################################################################################################################
+
+
+    python_cmd = '/usr/bin/python3.11'
+    zogy_code = '/code/modules/zogy/v21Aug2018/py_zogy.py'
+    filename_diffimage = 'diffimage.fits'
+    filename_diffpsf = 'diffpsf.fits'
+    filename_scorrimage = 'scorrimage.fits'
+
+    zogy_cmd = [python_cmd,
+                zogy_code,
+                filename_bkg_subbed_science_image,
+                output_resampled_gainmatched_reference_image,
+                filename_psf,
+                filename_refimage_psf,
+                reformatted_science_uncert_image_filename,
+                output_resampled_reference_uncert_image,
+                str(std_sci_img),
+                str(std_ref_img),
+                str(dxrmsfin),
+                str(dyrmsfin),
+                filename_diffimage,
+                filename_diffpsf,
+                filename_scorrimage]
+
+    exitcode_from_zogy = util.execute_command(zogy_cmd)
+
+
+    # Code-timing benchmark.
+
+    end_time_benchmark = time.time()
+    print("Elapsed time in seconds after running ZOGY =",
+        end_time_benchmark - start_time_benchmark)
+    start_time_benchmark = end_time_benchmark
+
+
+    # Mask difference image with output_resampled_reference_cov_map.
+
+    filename_diffimage_masked = zogy_output_diffimage_file                     # Nominally diffimage_masked.fits
+    filename_scorrimage_masked = 'scorrimage_masked.fits'
+
+    dfis.mask_difference_image_with_resampled_reference_cov_map(filename_diffimage,
+                                                                output_resampled_reference_cov_map,
+                                                                filename_diffimage_masked,
+                                                                post_zogy_keep_diffimg_lower_cov_map_thresh)
+
+    dfis.mask_difference_image_with_resampled_reference_cov_map(filename_scorrimage,
+                                                                output_resampled_reference_cov_map,
+                                                                filename_scorrimage_masked,
+                                                                post_zogy_keep_diffimg_lower_cov_map_thresh)
+
+
+    # Restore NaNs that were masked prior to executing ZOGY.
+
+    if nan_indices_sciimage:
+        util.restore_nans(filename_diffimage_masked,nan_indices_sciimage)
+
+    if nan_indices_refimage:
+        util.restore_nans(filename_diffimage_masked,nan_indices_refimage)
+
+    if nan_indices_sciimage:
+        util.restore_nans(filename_scorrimage_masked,nan_indices_sciimage)
+
+    if nan_indices_refimage:
+        util.restore_nans(filename_scorrimage_masked,nan_indices_refimage)
+
+
+    # Code-timing benchmark.
+
+    end_time_benchmark = time.time()
+    print("Elapsed time in seconds after masking ZOGY difference image =",
+        end_time_benchmark - start_time_benchmark)
+    start_time_benchmark = end_time_benchmark
+
+
+    # Generate diffimage uncertainty image, which will be the weight image for sextractor_WEIGHT_IMAGE.
+
+    filename_diffimage_unc_masked = 'diffimage_uncert_masked.fits'
+    dfis.compute_diffimage_uncertainty(sca_gain,
+                                       reformatted_science_image_filename,
+                                       output_resampled_gainmatched_reference_image,
+                                       output_resampled_reference_cov_map,
+                                       filename_diffimage_masked,
+                                       filename_diffimage_unc_masked)
+    filename_weight_image = filename_diffimage_unc_masked
+    filename_diffimage_sextractor_catalog = filename_diffimage_masked.replace(".fits",".txt")
+
+
+    # Compute SExtractor catalog for masked difference image.
+    # Execute SExtractor to first detect candidates on Scorr (S/N) match-filter
+    # image, then use to perform aperture phot on difference image to generate
+    # raw ascii catalog file.
+
+    sextractor_diffimage_paramsfile = "/code/cdf/rapidSexParamsDiffImage.inp";
+
+    sextractor_diffimage_dict["sextractor_detection_image".lower()] = filename_scorrimage_masked
+    sextractor_diffimage_dict["sextractor_input_image".lower()] = filename_diffimage_masked
+    sextractor_diffimage_dict["sextractor_WEIGHT_IMAGE".lower()] = filename_weight_image
+    sextractor_diffimage_dict["sextractor_PARAMETERS_NAME".lower()] = sextractor_diffimage_paramsfile
+    sextractor_diffimage_dict["sextractor_FILTER_NAME".lower()] = "/code/cdf/rapidSexDiffImageFilter.conv"
+    sextractor_diffimage_dict["sextractor_STARNNW_NAME".lower()] = "/code/cdf/rapidSexDiffImageStarGalaxyClassifier.nnw"
+    sextractor_diffimage_dict["sextractor_CATALOG_NAME".lower()] = filename_diffimage_sextractor_catalog
+    sextractor_cmd = util.build_sextractor_command_line_args(sextractor_diffimage_dict)
+    exitcode_from_sextractor = util.execute_command(sextractor_cmd)
+
+    params_to_get_diffimage = ["XWIN_IMAGE","YWIN_IMAGE","FLUX_APER_6"]
+
+    vals_diffimage = util.parse_ascii_text_sextractor_catalog(filename_diffimage_sextractor_catalog,
+                                                              sextractor_diffimage_paramsfile,
+                                                              params_to_get_diffimage)
+
+    nsexcatsources_diffimage = len(vals_diffimage)
+
+    print("nsexcatsources_diffimage =",nsexcatsources_diffimage)
+
+
+    # Code-timing benchmark.
+
+    end_time_benchmark = time.time()
+    print("Elapsed time in seconds after running SExtractor on ZOGY difference image =",
+        end_time_benchmark - start_time_benchmark)
+    start_time_benchmark = end_time_benchmark
+
+
+
+
+    # Compute MD5 checksum of masked difference image.
+
+    print("Computing checksum of ",filename_diffimage_masked)
+    checksum_diffimage = db.compute_checksum(filename_diffimage_masked)
+
+    if checksum_diffimage == 65 or checksum_diffimage == 68 or checksum_diffimage == 66:
+        print("*** Error: Unexpected value for checksum =",checksum_diffimage)
+
+
+
+
+    # Define ZOGY dictionary in config-file dictionary for products.
+
+    product_config['ZOGY'] = {}
+
+    product_config['ZOGY']['rid'] = str(rid_sciimage)
+    product_config['ZOGY']['ppid'] = str(ppid_sciimage)
+    product_config['ZOGY']['rfid'] = str(rfid)
+
+
+    # By design, the following is redundant.  It is also written to REF_IMAGE block above
+    # only if it was necessary for this pipeline instance to generate a reference image.
+
+    product_config['ZOGY']['awaicgen_output_mosaic_image_infobits'] = str(infobits_refimage)
+
+    product_config['ZOGY']['zogy_output_diffimage_file_checksum'] = checksum_diffimage
+    product_config['ZOGY']['zogy_output_diffimage_file'] = zogy_diffimage_name_for_db_record
+    product_config['ZOGY']['zogy_output_diffpsf_file'] = zogy_diffpsf_name_for_db_record
+    product_config['ZOGY']['zogy_output_scorrimage_file'] = zogy_scorrimage_name_for_db_record
+    product_config['ZOGY']['zogy_output_diffimage_file_status'] = str(1)
+    product_config['ZOGY']['zogy_output_diffimage_file_infobits'] = str(0)                                        # TODO
+
+
+    # The following sky positions are correct for the difference image
+    # only because the current code reprojects the reference image
+    # into the distorted grid of the science image.
+
+    product_config['ZOGY']['ra0'] = str(ra0_sciimage)
+    product_config['ZOGY']['dec0'] = str(dec0_sciimage)
+    product_config['ZOGY']['ra1'] = str(ra1_sciimage)
+    product_config['ZOGY']['dec1'] = str(dec1_sciimage)
+    product_config['ZOGY']['ra2'] = str(ra2_sciimage)
+    product_config['ZOGY']['dec2'] = str(dec2_sciimage)
+    product_config['ZOGY']['ra3'] = str(ra3_sciimage)
+    product_config['ZOGY']['dec3'] = str(dec3_sciimage)
+    product_config['ZOGY']['ra4'] = str(ra4_sciimage)
+    product_config['ZOGY']['dec4'] = str(dec4_sciimage)
+
+    product_config['ZOGY']['fid'] = str(fid_sciimage)
+    product_config['ZOGY']['nsexcatsources'] = str(nsexcatsources_diffimage)
+    product_config['ZOGY']['scalefacref'] = str(scalefacref)
+    product_config['ZOGY']['dxrmsfin'] = str(dxrmsfin)
+    product_config['ZOGY']['dyrmsfin'] = str(dyrmsfin)
+    product_config['ZOGY']['dxmedianfin'] = str(dxmedianfin)
+    product_config['ZOGY']['dymedianfin'] = str(dymedianfin)
+
+
+
+    #################################################################################################################
+    # Optionally run SFFT to generate an alternate difference image and catalog.
+    # Filenames for the SExtractor segmented maps are provided, and, if they do not exist, they will be generated.
+    # Output files (constructed by the script, but not provided as input:
+    #    sfftdiffimage_masked.fits
+    #    sfftsoln.fits
+    #################################################################################################################
+
+    run_sfft = eval(sfft_dict['run_sfft'])
+
+    # Always leave as True, and can only be reset to False if and only if SFFT runs and fails.
+    run_sfft_was_successful = True
+
+    if run_sfft:
+
+        # Cannot run under python3.11 because scikit-learn fails to install.
+        python_cmd = '/usr/bin/python3'
+        sfft_code = '/code/modules/sfft/sfft_rapid.py'
+        filename_scifile = filename_bkg_subbed_science_image
+        filename_reffile = output_resampled_gainmatched_reference_image
+        filename_scisegm = 'sfftscisegm.fits'
+        filename_refsegm = 'sfftrefsegm.fits'
+
+        crossconv_flag = eval(sfft_dict['crossconv_flag'])
+
+        if crossconv_flag:
+            filename_sfftdiffimage = 'sfftdiffimage_cconv_masked.fits'
+            filename_sfftsoln = 'sfftsoln_cconv.fits'
+        else:
+            filename_sfftdiffimage = 'sfftdiffimage_masked.fits'
+            filename_sfftsoln = 'sfftsoln.fits'
+
+        filename_dcdiff = 'sfftdiffimage_dconv_masked.fits'
+
+        # A quirk in the software requires prepended "./" to input filenames.
+        sfft_cmd = [python_cmd,
+                    sfft_code,
+                    "./" + filename_scifile,
+                    "./" + filename_reffile,
+                    filename_scisegm,
+                    filename_refsegm]
+
+        if crossconv_flag:
+            sfft_cmd.append("--crossconv")
+            sfft_cmd.append("--scipsf")
+            sfft_cmd.append(filename_psf)
+            sfft_cmd.append("--refpsf")
+            sfft_cmd.append(filename_refimage_psf)
+
+        exitcode_from_sfft = util.execute_command(sfft_cmd)
+
+        if int(exitcode_from_sfft) != 0:
+            run_sfft_was_successful = False
+
+
+        # Code-timing benchmark.
+
+        end_time_benchmark = time.time()
+        print("Elapsed time in seconds after running SFFT =",
+            end_time_benchmark - start_time_benchmark)
+        start_time_benchmark = end_time_benchmark
+
+        if run_sfft_was_successful:
+
+            # Generate SFFT diffimage uncertainty image, which will be the weight image for sextractor_WEIGHT_IMAGE.
+
+            filename_sfftdiffimage_unc = 'sfftdiffimage_uncert_masked.fits'
+            dfis.compute_diffimage_uncertainty(sca_gain,
+                                               reformatted_science_image_filename,
+                                               output_resampled_gainmatched_reference_image,
+                                               output_resampled_reference_cov_map,
+                                               filename_sfftdiffimage,
+                                               filename_sfftdiffimage_unc)
+            filename_weight_image = filename_sfftdiffimage_unc
+            filename_sfftdiffimage_sextractor_catalog = filename_sfftdiffimage.replace(".fits",".txt")
+
+
+            # Compute SExtractor catalog for masked difference image.
+            # Execute SExtractor to first detect candidates on Scorr (S/N) match-filter
+            # image, then use to perform aperture phot on difference image to generate
+            # raw ascii catalog file.
+
+            sextractor_diffimage_paramsfile = "/code/cdf/rapidSexParamsDiffImage.inp";
+
+            sextractor_diffimage_dict["sextractor_detection_image".lower()] = filename_sfftdiffimage
+            sextractor_diffimage_dict["sextractor_input_image".lower()] = filename_sfftdiffimage
+            sextractor_diffimage_dict["sextractor_WEIGHT_IMAGE".lower()] = filename_weight_image
+            sextractor_diffimage_dict["sextractor_PARAMETERS_NAME".lower()] = sextractor_diffimage_paramsfile
+            sextractor_diffimage_dict["sextractor_FILTER_NAME".lower()] = "/code/cdf/rapidSexDiffImageFilter.conv"
+            sextractor_diffimage_dict["sextractor_STARNNW_NAME".lower()] = "/code/cdf/rapidSexDiffImageStarGalaxyClassifier.nnw"
+            sextractor_diffimage_dict["sextractor_CATALOG_NAME".lower()] = filename_sfftdiffimage_sextractor_catalog
+            sextractor_cmd = util.build_sextractor_command_line_args(sextractor_diffimage_dict)
+            exitcode_from_sextractor = util.execute_command(sextractor_cmd)
+
+            params_to_get_diffimage = ["XWIN_IMAGE","YWIN_IMAGE","FLUX_APER_6"]
+
+            vals_sfftdiffimage = util.parse_ascii_text_sextractor_catalog(filename_sfftdiffimage_sextractor_catalog,
+                                                                          sextractor_diffimage_paramsfile,
+                                                                          params_to_get_diffimage)
+
+            nsexcatsources_sfftdiffimage = len(vals_sfftdiffimage)
+
+            print("nsexcatsources_sfftdiffimage =",nsexcatsources_sfftdiffimage)
+
+
+            # Code-timing benchmark.
+
+            end_time_benchmark = time.time()
+            print("Elapsed time in seconds after running SExtractor on SFFT difference image =",
+                end_time_benchmark - start_time_benchmark)
+            start_time_benchmark = end_time_benchmark
+
+
+
+
+    #################################################################################################################
+    # Compute naive image difference.
+    #################################################################################################################
+
+    naive_diffimage_flag = eval(naive_diffimage_dict['naive_diffimage_flag'])
+
+    if naive_diffimage_flag:
+
+        filename_naive_diffimage = "naive_diffimage.fits"
+
+        util.compute_naive_difference_image(filename_bkg_subbed_science_image,
+                                            output_resampled_gainmatched_reference_image,
+                                            filename_naive_diffimage)
+
+
+        # Mask naive difference image with output_resampled_reference_cov_map.
+
+        filename_naive_diffimage_masked = naive_diffimage_dict['naive_output_diffimage_file']
+
+        dfis.mask_difference_image_with_resampled_reference_cov_map(filename_naive_diffimage,
+                                                                    output_resampled_reference_cov_map,
+                                                                    filename_naive_diffimage_masked,
+                                                                    post_zogy_keep_diffimg_lower_cov_map_thresh)
+
+
+        # Restore NaNs that were masked prior to executing ZOGY.
+
+        if nan_indices_sciimage:
+            util.restore_nans(filename_naive_diffimage_masked,nan_indices_sciimage)
+
+        if nan_indices_refimage:
+            util.restore_nans(filename_naive_diffimage_masked,nan_indices_refimage)
+
+
+        # Code-timing benchmark.
+
+        end_time_benchmark = time.time()
+        print("Elapsed time in seconds after computing naive image difference =",
+            end_time_benchmark - start_time_benchmark)
+        start_time_benchmark = end_time_benchmark
+
+
+    # Get listing of working directory as a diagnostic.
+
+    ls_cmd = ['ls','-ltr']
+    exitcode_from_ls = util.execute_command(ls_cmd)
+
+
+    # Get timestamp job ended in Pacific Time for Jobs database record later.
+
+    datetime_utc_now = datetime.utcnow()
+    proc_utc_datetime = datetime_utc_now.strftime('%Y-%m-%dT%H:%M:%SZ')
+    datetime_pt_now = datetime_utc_now.replace(tzinfo=timezone.utc).astimezone(tz=to_zone)
+    proc_pt_datetime_ended = datetime_pt_now.strftime('%Y-%m-%dT%H:%M:%S PT')
+
+    print("proc_pt_datetime_ended =",proc_pt_datetime_ended)
+
+    product_config['JOB_PARAMS']['job_ended'] = str(proc_pt_datetime_ended)
+
+
+    # Write product config file for job.
+
+    with open(product_config_ini_filename, 'w') as product_configfile:
+
+        product_configfile.write("#" + "\n")
+        product_configfile.write("# " + proc_utc_datetime + "\n")
+        product_configfile.write("#" + "\n")
+        product_configfile.write("# Machine-generated by " + swname + "\n")
+        product_configfile.write("#" + "\n")
+        product_configfile.write("\n")
+
+        product_config.write(product_configfile)
+
+
+
+
+    # Code-timing benchmark.
+
+    end_time_benchmark = time.time()
+    print("Elapsed time in seconds after writing product config file at pipeline end =",
+        end_time_benchmark - start_time_benchmark)
+    start_time_benchmark = end_time_benchmark
+
+
+    # Code-timing benchmark overall.
+
+    end_time_benchmark = time.time()
+    print("Elapsed time in seconds to run one instance of science pipeline =",
+        end_time_benchmark - start_time_benchmark_at_start)
+
+
+    # Termination.
+
+    terminating_exitcode = 0
+    if not run_sfft_was_successful:
+        terminating_exitcode = 4
+
+    print("terminating_exitcode =",terminating_exitcode)
+
+
+    # AWS Batch job should be successful whenever terminating_exitcode < 64.
+
+    aws_batch_job_exitcode = 0
+
+    if (terminating_exitcode >= 64):
+        aws_batch_job_exitcode = terminating_exitcode
+
+    print("aws_batch_job_exitcode =",aws_batch_job_exitcode)
+
+    exit(aws_batch_job_exitcode)
+
+
+
+
+
+
 
 
     exit(0)
