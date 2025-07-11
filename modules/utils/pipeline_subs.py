@@ -2083,11 +2083,11 @@ def compute_image_overlap_area(w_sci,
     for line in listing.split('\n'):
         line = line.strip()
         if line != "":
-            print(line)
+            #print(line)
             a = line.split("=")
-            label = a[0]
-            intersecting_area = a[1]
-            print(label,intersecting_area)
+            label = a[0].strip()
+            intersecting_area = a[1].strip()
+            print(label,"(science-image pixels) =",intersecting_area)
 
 
     # Compute the percentage of overlap area between science and reference images.
