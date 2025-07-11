@@ -316,6 +316,7 @@ if __name__ == '__main__':
 
     generateReferenceImageCatalog_return_list = rfis.generateReferenceImageCatalog(fits_file_ref,
                                                                                    fits_file_ref_uncert,
+                                                                                   cfg_path,
                                                                                    sextractor_refimage_dict,
                                                                                    filename_refimage_catalog)
 
