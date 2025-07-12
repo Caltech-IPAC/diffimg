@@ -851,6 +851,7 @@ def resample_reference_image_to_science_image_with_pv_distortion(
     input_reference_cov_map,
     input_reference_uncert_image,
     hdu_index_for_reference_image_data,
+    pv_convert_flag_for_science_image_data,
     pv_convert_flag_for_reference_image_data,
     swarp_dict):
 
@@ -877,7 +878,8 @@ def resample_reference_image_to_science_image_with_pv_distortion(
     ref_uncert_fits_file_with_pv = input_reference_uncert_image.replace(".fits","_pv.fits")
 
 
-    convert_from_sip_to_pv(input_science_image,hdu_index_for_science_image_data,sci_img_fits_file_with_pv)
+    if pv_convert_flag_for_science_image_data:
+        convert_from_sip_to_pv(input_science_image,hdu_index_for_science_image_data,sci_img_fits_file_with_pv)
 
     if pv_convert_flag_for_reference_image_data:
         convert_from_sip_to_pv(input_reference_image,hdu_index_for_reference_image_data,ref_img_fits_file_with_pv)
@@ -902,7 +904,10 @@ def resample_reference_image_to_science_image_with_pv_distortion(
     if os.path.islink(distort_grid_header_file_symlink):
         os.unlink(distort_grid_header_file_symlink)
 
-    os.symlink(sci_img_fits_file_with_pv, distort_grid_header_file_symlink)
+    if pv_convert_flag_for_science_image_data:
+        os.symlink(sci_img_fits_file_with_pv, distort_grid_header_file_symlink)
+    else:
+        os.symlink(input_science_image, distort_grid_header_file_symlink)
 
 
     # Repeat for reference coverage map.
@@ -914,7 +919,10 @@ def resample_reference_image_to_science_image_with_pv_distortion(
     if os.path.islink(distort_grid_header_file_symlink):
         os.unlink(distort_grid_header_file_symlink)
 
-    os.symlink(sci_img_fits_file_with_pv, distort_grid_header_file_symlink)
+    if pv_convert_flag_for_science_image_data:
+        os.symlink(sci_img_fits_file_with_pv, distort_grid_header_file_symlink)
+    else:
+        os.symlink(input_science_image, distort_grid_header_file_symlink)
 
 
     # Repeat for reference uncertainty image.
@@ -926,7 +934,10 @@ def resample_reference_image_to_science_image_with_pv_distortion(
     if os.path.islink(distort_grid_header_file_symlink):
         os.unlink(distort_grid_header_file_symlink)
 
-    os.symlink(sci_img_fits_file_with_pv, distort_grid_header_file_symlink)
+    if pv_convert_flag_for_science_image_data:
+        os.symlink(sci_img_fits_file_with_pv, distort_grid_header_file_symlink)
+    else:
+        os.symlink(input_science_image, distort_grid_header_file_symlink)
 
 
     # Swarp the reference image.
@@ -2130,3 +2141,48 @@ def compute_uncertainty_image_via_simple_model(input_filename,hdu_index,output_f
 
     return
 
+
+
+'''
+    private double [][] generatePSF()
+    {
+
+
+FWHM = 2√2ln2σ ≈ 2.355σ
+
+        double [][] psfvals = new double [stampsz][stampsz];
+
+        double [] x1a = new double [stampsz];
+        double [] x2a = new double [stampsz];
+
+
+        for ( int j = 0; j < stampsz; j++ )
+        {
+            x1a[j] = (double) ( j - stampsz / 2 );
+        }
+
+        for ( int i = 0; i < stampsz; i++ )
+        {
+            x2a[i] = (double) ( i - stampsz / 2 );
+        }
+
+        double rotationAngleRadians = ExtendedMath.D2R * ( rotationAngle );
+        double t1 = Math.cos( rotationAngleRadians );
+	double t2 = Math.sin( rotationAngleRadians );
+
+        for ( int i = 0; i < stampsz; i++ )
+        {
+            for ( int j = 0; j < stampsz; j++ )
+            {
+                double x = x1a[j];
+                double y = x2a[i];
+                double xp = t1 * x + t2 * y;
+	        double yp = -t2 * x + t1 * y;
+
+                psfvals[i][j] = Math.exp( - ( xp * xp / ( 2.0 * sigmaX * sigmaX ) + yp * yp / ( 2.0 * sigmaY * sigmaY ) ) );
+            }
+        }
+
+        return psfvals;
+    }
+'''
