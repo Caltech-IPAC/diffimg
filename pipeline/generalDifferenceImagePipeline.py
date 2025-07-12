@@ -43,8 +43,8 @@ rapid_sw = "/code"
 
 # Specify science image.
 
-input_fits_file = 'ADP.2022-07-27T14_56_30.297.fits'
-hdr_num = 1                                                    # Second HDU
+filename_science_image = 'ADP.2022-07-27T14_56_30.297.fits'
+hdu_index_science = 1                                                    # Second HDU
 jid = 1
 fid = 2
 rfid = 3
@@ -101,13 +101,13 @@ if __name__ == '__main__':
 
     # Read FITS file
 
-    with fits.open(input_fits_file) as hdul:
+    with fits.open(filename_science_image) as hdul:
 
         filter_science = hdul[0].header["FILTER"].strip()
 
         print("filter_science =",filter_science)
 
-        hdr = hdul[hdr_num].header
+        hdr = hdul[hdu_index_science].header
 
         radecsys = hdr['RADECSYS']
         print("radecsys =",radecsys)
@@ -298,11 +298,11 @@ if __name__ == '__main__':
 
     # Compute reference-image uncertainty image via simple model (photon noise only).
 
-    fits_file_ref_uncert = fits_file_ref.replace(".fits","_unc.fits")
+    fits_file_ref_unc = fits_file_ref.replace(".fits","_unc.fits")
 
     util.compute_uncertainty_image_via_simple_model(fits_file_ref,
                                                     hdu_index,
-                                                    fits_file_ref_uncert,
+                                                    fits_file_ref_unc,
                                                     gain_refimage,
                                                     nframes_refimage)
 
@@ -321,14 +321,14 @@ if __name__ == '__main__':
 
     filename_refimage_catalog = fits_file_ref.replace(".fits","_secat.txt")
 
-    generateReferenceImageCatalog_return_list = rfis.generateReferenceImageCatalog(fits_file_ref,
-                                                                                   fits_file_ref_uncert,
-                                                                                   cfg_path,
-                                                                                   sextractor_refimage_dict,
-                                                                                   filename_refimage_catalog)
+    rfis.generateReferenceImageCatalog(fits_file_ref,
+                                       fits_file_ref_unc,
+                                       cfg_path,
+                                       sextractor_refimage_dict,
+                                       filename_refimage_catalog)
 
 
-    # Compute additional quantities needed for later populating refimmeta table in RAPID operations database.
+    # Compute additional quantities needed for the reference-image PSF.
 
     sextractor_refimage_paramsfile = cfg_path + "/srcExtractParamsRefImage.inp";
     params_to_get_refimage = ["FWHM_IMAGE"]
@@ -339,55 +339,18 @@ if __name__ == '__main__':
 
     nsexcatsources_refimage = len(vals_refimage)
 
-    vals_fwhm = []
+    fwhm_ref_vals = []
     for val in vals_refimage:
-        vals_fwhm.append(float(val[0]))
+        fwhm_ref_vals.append(float(val[0]))
 
-    np_vals_fwhm = np.array(vals_fwhm)
+    np_fwhm_ref_vals = np.array(fwhm_ref_vals)
 
-    fwhmminpix = np.nanmin(np_vals_fwhm)
-    fwhmmaxpix = np.nanmax(np_vals_fwhm)
-    fwhmmedpix = np.nanmedian(np_vals_fwhm)
+    fwhm_ref_minpix = np.nanmin(np_fwhm_ref_vals)
+    fwhm_ref_maxpix = np.nanmax(np_fwhm_ref_vals)
+    fwhm_ref_medpix = np.nanmedian(np_fwhm_ref_vals)
 
+    print("fwhm_ref_medpix,fwhm_ref_minpix,fwhm_ref_maxpix =",fwhm_ref_medpix,fwhm_ref_minpix,fwhm_ref_maxpix)
 
-
-
-
-
-
-
-    # TODO:  The following is incorrect, but used as a stopgap for now:
-    # Need to standardize the exposure time of a reference image,
-    # and make sure it is properly scaled to the science image
-    # prior to difference imaging, and also use it to compute saturation_level_refimage_rate.
-
-    saturation_level_refimage_rate = saturation_level_refimage / exptime_sciimage
-
-
-
-
-
-
-
-
-    n_sigma = 3.0
-    hdu_index = 0
-
-    stats_refimage = util.fits_data_statistics_with_clipping(awaicgen_output_mosaic_image_file,\
-                                                             n_sigma,\
-                                                             hdu_index,\
-                                                             saturation_level_refimage_rate)
-
-    avg_refimage = stats_refimage["clippedavg"]
-    std_refimage = stats_refimage["clippedstd"]
-    cnt_refimage = stats_refimage["nkept"]
-    noutliers_refimage = stats_refimage["noutliers"]
-    gmed_refimage = stats_refimage["gmed"]
-    datascale_refimage = stats_refimage["gsigma"]
-    gmin_refimage = stats_refimage["gdatamin"]
-    gmax_refimage = stats_refimage["gdatamax"]
-    npixsat_refimage = stats_refimage["satcount"]
-    npixnan_refimage = stats_refimage["nancount"]
 
 
     # Code-timing benchmark.
@@ -409,7 +372,6 @@ if __name__ == '__main__':
                                  'swvers': swvers}
 
     product_config['JOB_PARAMS']['jid'] = str(jid)
-    product_config['JOB_PARAMS']['job_proc_date'] = job_proc_date
     product_config['JOB_PARAMS']['verbose'] = str(verbose)
     product_config['JOB_PARAMS']['job_started'] = str(proc_pt_datetime_started)
 
@@ -418,20 +380,9 @@ if __name__ == '__main__':
 
     product_config['REF_IMAGE']['rfid'] = str(rfid)
     product_config['REF_IMAGE']['ppid'] = str(ppid_sciimage)
-    product_config['REF_IMAGE']['awaicgen_output_mosaic_image_file_checksum'] = checksum_refimage
 
-    product_config['REF_IMAGE']['awaicgen_output_mosaic_image_file'] = mosaic_image_name_for_db_record
-    product_config['REF_IMAGE']['awaicgen_output_mosaic_cov_map_file'] = mosaic_cov_map_name_for_db_record
-    product_config['REF_IMAGE']['awaicgen_output_mosaic_uncert_image_file'] = mosaic_uncert_image_name_for_db_record
-    product_config['REF_IMAGE']['awaicgen_output_mosaic_image_status'] = str(1)
-    product_config['REF_IMAGE']['awaicgen_output_mosaic_image_infobits'] = str(infobits_refimage)
 
-    product_config['REF_IMAGE']['sextractor_refimage_catalog_filename_for_db'] = refimage_catalog_name_for_db_record
-    product_config['REF_IMAGE']['sextractor_refimage_catalog_checksum'] = checksum_refimage_catalog
-    product_config['REF_IMAGE']['sextractor_refimage_catalog_cattype'] = str(1)
-    product_config['REF_IMAGE']['sextractor_refimage_catalog_status'] = str(1)
-
-    product_config['REF_IMAGE']['nframes'] = str(nframes)
+    product_config['REF_IMAGE']['nframes'] = str(nframes_refimage)
     product_config['REF_IMAGE']['npixsat'] = str(npixsat_refimage)
     product_config['REF_IMAGE']['npixnan'] = str(npixnan_refimage)
     product_config['REF_IMAGE']['clmean'] = str(avg_refimage)
@@ -441,49 +392,100 @@ if __name__ == '__main__':
     product_config['REF_IMAGE']['datascale'] = str(datascale_refimage)
     product_config['REF_IMAGE']['gmin'] = str(gmin_refimage)
     product_config['REF_IMAGE']['gmax'] = str(gmax_refimage)
-    product_config['REF_IMAGE']['cov5percent'] = str(cov5percent)
-    product_config['REF_IMAGE']['medncov'] = str(medncov)
-    product_config['REF_IMAGE']['medpixunc'] = str(medpixunc)
-    product_config['REF_IMAGE']['fwhmmedpix'] = str(fwhmmedpix)
-    product_config['REF_IMAGE']['fwhmminpix'] = str(fwhmminpix)
-    product_config['REF_IMAGE']['fwhmmaxpix'] = str(fwhmmaxpix)
+    product_config['REF_IMAGE']['fwhm_ref_medpix'] = str(fwhm_ref_medpix)
+    product_config['REF_IMAGE']['fwhm_ref_minpix'] = str(fwhm_ref_minpix)
+    product_config['REF_IMAGE']['fwhm_ref_maxpix'] = str(fwhm_ref_maxpix)
     product_config['REF_IMAGE']['nsexcatsources'] = str(nsexcatsources_refimage)
-    product_config['REF_IMAGE']['input_images_csv_name_for_download'] = input_images_csv_name_for_download
-
-
-
-
-
-
-    # Unzip the science image gzipped file.
-
-    gunzip_cmd = ['gunzip', science_image_filename_gz]
-    exitcode_from_gunzip = util.execute_command(gunzip_cmd)
-
-    science_image_filename = science_image_filename_gz.replace(".fits.gz",".fits")
 
 
     # Compute image statistics for image resizing.
 
     n_sigma = 3.0
-    hdu_index = 1
 
-    stats_sci_img = util.fits_data_statistics_with_clipping(science_image_filename,\
-                                                            n_sigma,\
-                                                            hdu_index,\
+    stats_sci_img = util.fits_data_statistics_with_clipping(filename_science_image,
+                                                            n_sigma,
+                                                            hdu_index_science,
                                                             saturation_level_sciimage)
 
     avg_sci_img = stats_sci_img["clippedavg"]
 
 
-    # Reformat the Troxel OpenUniverse simulated image FITS file
+    # Reformat the science image FITS file
     # so that the image data are contained in the PRIMARY header.
     # Compute uncertainty image via simple model (photon noise only).
-    # Resize images to 4089x4089 (odd number of pixels on each side).
+    # Resize images
+    # from
+    # NAXIS1  =                 2099 / length of data axis 1
+    # NAXIS2  =                 2100 / length of data axis 2
+    # to
+    # NAXIS1  =                 2099 / length of data axis 1
+    # NAXIS2  =                 2101 / length of data axis 2
+    # (odd number of pixels on each side).
 
-    reformatted_science_image_filename,\
-        reformatted_science_uncert_image_filename =\
-        dfis.reformat_troxel_fits_file_and_compute_uncertainty_image_via_simple_model(science_image_filename,sca_gain,avg_sci_img)
+    reformatted_science_image_filename = filename_science_image.replace(".fits","_reformatted.fits")
+    reformatted_science_uncert_image_filename = filename_science_image.replace(".fits","_reformatted_unc.fits")
+
+    append_extra_col = False
+    append_extra_row = True
+
+    dfis.reformat_science_fits_file_and_compute_uncertainty_image_via_simple_model(filename_science_image,
+                                                                                   hdu_index_science,
+                                                                                   reformatted_science_image_filename,
+                                                                                   reformatted_science_uncert_image_filename,
+                                                                                   append_extra_col,
+                                                                                   append_extra_row,
+                                                                                   sca_gain,
+                                                                                   avg_sci_img)
+
+
+
+
+
+
+
+
+    # Generate science-image catalog.
+
+    filename_sciimage_catalog = reformatted_science_image_filename.replace(".fits","_secat.txt")
+
+    util.generateScienceImageCatalog(reformatted_science_image_filename,
+                                                                                   reformatted_science_uncert_image_filename,
+                                                                                   cfg_path,
+                                                                                   sextractor_sciimage_dict,
+                                                                                   filename_sciimage_catalog)
+
+
+    # Compute additional quantities needed for the science-image PSF.
+
+    sextractor_sciimage_paramsfile = cfg_path + "/srcExtractParamsSciImage.inp";
+    params_to_get_sciimage = ["FWHM_IMAGE"]
+
+    vals_sciimage = util.parse_ascii_text_sextractor_catalog(filename_sciimage_catalog,
+                                                             sextractor_sciimage_paramsfile,
+                                                             params_to_get_sciimage)
+
+    nsexcatsources_sciimage = len(vals_sciimage)
+
+    fwhm_sci_vals = []
+    for val in vals_sciimage:
+        fwhm_sci_vals.append(float(val[0]))
+
+    np_fwhm_sci_vals = np.array(fwhm_sci_vals)
+
+    fwhm_sci_minpix = np.nanmin(np_fwhm_sci_vals)
+    fwhm_sci_maxpix = np.nanmax(np_fwhm_sci_vals)
+    fwhm_sci_medpix = np.nanmedian(np_fwhm_sci_vals)
+
+    print("fwhm_sci_medpix,fwhm_sci_minpix,fwhm_sci_maxpix =",fwhm_sci_medpix,fwhm_sci_minpix,fwhm_sci_maxpix)
+
+
+
+
+
+
+
+
+
 
 
     # Swarp the reference image and associated uncertainty image into the distortion frame of the science image.
@@ -493,6 +495,7 @@ if __name__ == '__main__':
 
     hdu_index_for_science_image_data = 0
     hdu_index_for_reference_image_data = 0
+    pv_convert_flag_for_science_image_data = False                   # TODO
     pv_convert_flag_for_reference_image_data = False                   # TODO
 
     sci_fits_file_with_pv,\
@@ -504,10 +507,11 @@ if __name__ == '__main__':
         output_resampled_reference_uncert_image =\
         util.resample_reference_image_to_science_image_with_pv_distortion(reformatted_science_image_filename,\
                                                                           hdu_index_for_science_image_data,\
-                                                                          awaicgen_output_mosaic_image_file,\
-                                                                          awaicgen_output_mosaic_cov_map_file,\
-                                                                          awaicgen_output_mosaic_uncert_image_file,\
+                                                                          fits_file_ref,\
+                                                                          fits_file_ref_cov,\
+                                                                          fits_file_ref_unc,\
                                                                           hdu_index_for_reference_image_data,\
+                                                                          pv_convert_flag_for_science_image_data,\
                                                                           pv_convert_flag_for_reference_image_data,\
                                                                           swarp_dict)
 
@@ -517,8 +521,6 @@ if __name__ == '__main__':
     end_time_benchmark = time.time()
     print("Elapsed time in seconds after swarping images =",end_time_benchmark - start_time_benchmark)
     start_time_benchmark = end_time_benchmark
-
-
 
 
     # Compute image statistics for ZOGY.
@@ -560,7 +562,7 @@ if __name__ == '__main__':
 
     bkgest_cmd = [bkgest_code,
                   '-i',
-                  sci_fits_file_with_pv,
+                  reformatted_science_image_filename,
                   '-f',
                   bkgest_dict["output_image_type"],
                   '-c',
@@ -623,21 +625,14 @@ if __name__ == '__main__':
 
     # Replace NaNs, if any, in ZOGY input images.  Use the same saturation level rate since they are gain-matched.
 
-    saturation_value_rate_sciimage = saturation_level_sciimage / exptime_sciimage
-    nan_indices_sciimage = util.replace_nans_with_sat_val_rate(filename_bkg_subbed_science_image,saturation_value_rate_sciimage)
-    nan_indices_refimage = util.replace_nans_with_sat_val_rate(output_resampled_gainmatched_reference_image,saturation_value_rate_sciimage)
+    print("saturation_level_sciimage =",saturation_level_sciimage)
+    nan_indices_sciimage = util.replace_nans_with_sat_val_rate(filename_bkg_subbed_science_image,saturation_level_sciimage)
+    nan_indices_refimage = util.replace_nans_with_sat_val_rate(output_resampled_gainmatched_reference_image,saturation_level_sciimage)
 
 
     # Apply subpixel orthogonal offsets to ZOGY input reference image.
 
     util.apply_subpixel_orthogonal_offsets(output_resampled_gainmatched_reference_image,dxmedianfin,dymedianfin)
-
-
-    # Tranpose science-image PSF for rimtimsim data.
-
-    if "rimtimsim" in science_image_filename:
-
-        util.transpose_image_data(filename_psf)
 
 
     # Code-timing benchmark.
@@ -649,14 +644,14 @@ if __name__ == '__main__':
 
 
     #################################################################################################################
-    # The image data in science_image_filename and sci_fits_file_with_pv FITS files are the same, only the
+    # The image data in filename_science_image and sci_fits_file_with_pv FITS files are the same, only the
     # representation of geometric distortion in the FITS headers are different (sip versus pv).
     #
     # ZOGY only cares about the image data, not what is in the FITS headers.
     # Usage: python py_zogy.py <NewImage> <RefImage> <NewPSF> <RefPSF> <NewSigmaImage> <RefSigmaImage>
     #                    <NewSigmaMode> <RefSigmaMode> <AstUncertX> <AstUncertY> <DiffImage> <DiffPSF> <ScorrImage>
     #
-    # Assume top-level directory of RAPID-pipeline git repo is mapped to /code inside Docker container.
+    # Assume top-level directory of RAPID-pipeline git repo is mapped to rapid_sw inside Docker container.
     #################################################################################################################
 
 
