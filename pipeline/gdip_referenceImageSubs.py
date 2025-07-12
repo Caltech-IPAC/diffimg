@@ -10,7 +10,7 @@ import modules.utils.gdip_subs as util
 
 
 #####################################################################################
-# Generate reference-image catalog and upload it to S3 bucket.
+# Generate reference-image catalog.
 #####################################################################################
 
 def generateReferenceImageCatalog(filename_refimage_image,
