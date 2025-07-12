@@ -2142,47 +2142,45 @@ def compute_uncertainty_image_via_simple_model(input_filename,hdu_index,output_f
     return
 
 
+#-------------------------------------------------------------------
+# Generate a 2-D Gaussian PSF.
 
-'''
-    private double [][] generatePSF()
-    {
+def generate_2d_gaussian_psf(fwhm,nside):
+
+    rotationAngle = 0.0
+
+    scale_factor = 2 * np.sqrt(2 * np.log(2))
+
+    sigma = fwhm / scale_factor
+
+    psfvals = np.zeros((nside,nside), dtype=float)
+
+    x1a = np.zeros((nside), dtype=float)
+    x2a = np.zeros((nside), dtype=float)
+
+    for j in range(nside):
+        x1a[j] = float(j) - float(nside) / 2.0
+
+    for i in range(nside):
+        x2a[j] = float(i) - float(nside) / 2.0
 
 
-FWHM = 2√2ln2σ ≈ 2.355σ
+    rotationAngleRadians = np.deg2rad(rotationAngle)
 
-        double [][] psfvals = new double [stampsz][stampsz];
+    t1 = np.cos( rotationAngleRadians )
+    t2 = np.sin( rotationAngleRadians )
 
-        double [] x1a = new double [stampsz];
-        double [] x2a = new double [stampsz];
+    for i in range(nside):
+        for j in range(nside):
+
+            x = x1a[j]
+            y = x2a[i]
+            xp = t1 * x + t2 * y
+            yp = -t2 * x + t1 * y
+
+            psfvals[i][j] = np.exp(-(xp * xp / ( 2.0 * sigmaX * sigmaX ) + yp * yp / (2.0 * sigmaY * sigmaY)))
 
 
-        for ( int j = 0; j < stampsz; j++ )
-        {
-            x1a[j] = (double) ( j - stampsz / 2 );
-        }
+    # Return PSF.
 
-        for ( int i = 0; i < stampsz; i++ )
-        {
-            x2a[i] = (double) ( i - stampsz / 2 );
-        }
-
-        double rotationAngleRadians = ExtendedMath.D2R * ( rotationAngle );
-        double t1 = Math.cos( rotationAngleRadians );
-	double t2 = Math.sin( rotationAngleRadians );
-
-        for ( int i = 0; i < stampsz; i++ )
-        {
-            for ( int j = 0; j < stampsz; j++ )
-            {
-                double x = x1a[j];
-                double y = x2a[i];
-                double xp = t1 * x + t2 * y;
-	        double yp = -t2 * x + t1 * y;
-
-                psfvals[i][j] = Math.exp( - ( xp * xp / ( 2.0 * sigmaX * sigmaX ) + yp * yp / ( 2.0 * sigmaY * sigmaY ) ) );
-            }
-        }
-
-        return psfvals;
-    }
-'''
+    return psfvals
