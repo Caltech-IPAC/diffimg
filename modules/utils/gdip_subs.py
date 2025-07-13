@@ -2147,6 +2147,8 @@ def compute_uncertainty_image_via_simple_model(input_filename,hdu_index,output_f
 
 def generate_2d_gaussian_psf(fwhm,nside,output_filename):
 
+    print("fwhm = ",fwhm)
+
     rotationAngle = 0.0
 
     scale_factor = 2 * np.sqrt(2 * np.log(2))
