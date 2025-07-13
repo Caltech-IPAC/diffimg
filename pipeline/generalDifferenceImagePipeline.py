@@ -46,8 +46,6 @@ rapid_sw = "/code"
 filename_science_image = 'ADP.2022-07-27T14_56_30.297.fits'
 hdu_index_science = 1                                                    # Second HDU
 jid = 1
-fid = 2
-rfid = 3
 
 
 # Compute processing datetime (UT) and processing datetime (Pacific time).
@@ -378,7 +376,6 @@ if __name__ == '__main__':
 
     product_config['REF_IMAGE'] = {}
 
-    product_config['REF_IMAGE']['rfid'] = str(rfid)
     product_config['REF_IMAGE']['ppid'] = str(ppid_sciimage)
 
 
@@ -809,7 +806,6 @@ if __name__ == '__main__':
     product_config['ZOGY'] = {}
 
     product_config['ZOGY']['ppid'] = str(ppid_sciimage)
-    product_config['ZOGY']['rfid'] = str(rfid)
 
 
 
@@ -828,7 +824,6 @@ if __name__ == '__main__':
     product_config['ZOGY']['ra4'] = str(ra4)
     product_config['ZOGY']['dec4'] = str(dec4)
 
-    product_config['ZOGY']['fid'] = str(fid)
     product_config['ZOGY']['nsexcatsources'] = str(nsexcatsources_diffimage)
     product_config['ZOGY']['scalefacref'] = str(scalefacref)
     product_config['ZOGY']['dxrmsfin'] = str(dxrmsfin)
@@ -1003,7 +998,7 @@ if __name__ == '__main__':
 
     # Get timestamp job ended in Pacific Time for Jobs database record later.
 
-    datetime_utc_now = datetime.utcnow()
+    datetime_utc_now = datetime.now(UTC)
     proc_utc_datetime = datetime_utc_now.strftime('%Y-%m-%dT%H:%M:%SZ')
     datetime_pt_now = datetime_utc_now.replace(tzinfo=timezone.utc).astimezone(tz=to_zone)
     proc_pt_datetime_ended = datetime_pt_now.strftime('%Y-%m-%dT%H:%M:%S PT')
