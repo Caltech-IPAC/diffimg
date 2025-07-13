@@ -376,47 +376,47 @@ def gainMatchScienceAndReferenceImages(filename_sci_image,
 
 
 
-    #for aa,bb,cc,dd in zip(magref_val,classstarref_val,isoareafimageref_val,awintobwinworldratioref_val):
-    #    print("aa,bb,cc,dd =",aa,bb,cc,dd)
+    for aa,bb,cc,dd in zip(magref_val,classstarref_val,isoareafimageref_val,awintobwinworldratioref_val):
+        print("aa,bb,cc,dd =",aa,bb,cc,dd)
 
-    min_magref_val = np.min(magref_val)
-    max_magref_val = np.max(magref_val)
-    median_magref_val = np.median(magref_val)
-    q1_magref_val = np.quantile(magref_val, 0.25)
-    q3_magref_val = np.quantile(magref_val, 0.75)
+    min_magref_val = np.nanmin(magref_val)
+    max_magref_val = np.nanmax(magref_val)
+    median_magref_val = np.nanmedian(magref_val)
+    q1_magref_val = np.nanquantile(magref_val, 0.25)
+    q3_magref_val = np.nanquantile(magref_val, 0.75)
     print("magref_val: min,q1,median,q3,max = ",min_magref_val,
                                                 q1_magref_val,
                                                 median_magref_val,
                                                 q3_magref_val,
                                                 max_magref_val)
 
-    min_classstarref_val = np.min(classstarref_val)
-    max_classstarref_val = np.max(classstarref_val)
-    median_classstarref_val = np.median(classstarref_val)
-    q1_classstarref_val = np.quantile(classstarref_val, 0.25)
-    q3_classstarref_val = np.quantile(classstarref_val, 0.75)
+    min_classstarref_val = np.nanmin(classstarref_val)
+    max_classstarref_val = np.nanmax(classstarref_val)
+    median_classstarref_val = np.nanmedian(classstarref_val)
+    q1_classstarref_val = np.nanquantile(classstarref_val, 0.25)
+    q3_classstarref_val = np.nanquantile(classstarref_val, 0.75)
     print("classstarref_val: min,q1,median,q3,max = ",min_classstarref_val,
                                                       q1_classstarref_val,
                                                       median_classstarref_val,
                                                       q3_classstarref_val,
                                                       max_classstarref_val)
 
-    min_isoareafimageref_val = np.min(isoareafimageref_val)
-    max_isoareafimageref_val = np.max(isoareafimageref_val)
-    median_isoareafimageref_val = np.median(isoareafimageref_val)
-    q1_isoareafimageref_val = np.quantile(isoareafimageref_val, 0.25)
-    q3_isoareafimageref_val = np.quantile(isoareafimageref_val, 0.75)
+    min_isoareafimageref_val = np.nanmin(isoareafimageref_val)
+    max_isoareafimageref_val = np.nanmax(isoareafimageref_val)
+    median_isoareafimageref_val = np.nanmedian(isoareafimageref_val)
+    q1_isoareafimageref_val = np.nanquantile(isoareafimageref_val, 0.25)
+    q3_isoareafimageref_val = np.nanquantile(isoareafimageref_val, 0.75)
     print("isoareafimageref_val: min,q1,median,q3,max = ",min_isoareafimageref_val,
                                                           q1_isoareafimageref_val,
                                                           median_isoareafimageref_val,
                                                           q3_isoareafimageref_val,
                                                           max_isoareafimageref_val)
 
-    min_awintobwinworldratioref_val = np.min(awintobwinworldratioref_val)
-    max_awintobwinworldratioref_val = np.max(awintobwinworldratioref_val)
-    median_awintobwinworldratioref_val = np.median(awintobwinworldratioref_val)
-    q1_awintobwinworldratioref_val = np.quantile(awintobwinworldratioref_val, 0.25)
-    q3_awintobwinworldratioref_val = np.quantile(awintobwinworldratioref_val, 0.75)
+    min_awintobwinworldratioref_val = np.nanmin(awintobwinworldratioref_val)
+    max_awintobwinworldratioref_val = np.nanmax(awintobwinworldratioref_val)
+    median_awintobwinworldratioref_val = np.nanmedian(awintobwinworldratioref_val)
+    q1_awintobwinworldratioref_val = np.nanquantile(awintobwinworldratioref_val, 0.25)
+    q3_awintobwinworldratioref_val = np.nanquantile(awintobwinworldratioref_val, 0.75)
     print("awintobwinworldratioref_val: min,q1,median,q3,max = ",min_awintobwinworldratioref_val,
                                                 q1_awintobwinworldratioref_val,
                                                 median_awintobwinworldratioref_val,
