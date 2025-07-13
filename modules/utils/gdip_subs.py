@@ -2145,7 +2145,7 @@ def compute_uncertainty_image_via_simple_model(input_filename,hdu_index,output_f
 #-------------------------------------------------------------------
 # Generate a 2-D Gaussian PSF.
 
-def generate_2d_gaussian_psf(fwhm,nside):
+def generate_2d_gaussian_psf(fwhm,nside,output_filename):
 
     rotationAngle = 0.0
 
@@ -2153,16 +2153,19 @@ def generate_2d_gaussian_psf(fwhm,nside):
 
     sigma = fwhm / scale_factor
 
+    sigmaX = sigma
+    sigmaY = sigma
+
     psfvals = np.zeros((nside,nside), dtype=float)
 
     x1a = np.zeros((nside), dtype=float)
     x2a = np.zeros((nside), dtype=float)
 
     for j in range(nside):
-        x1a[j] = float(j) - float(nside) / 2.0
+        x1a[j] = float(j) - float(nside) / 2.0 + 0.5
 
     for i in range(nside):
-        x2a[j] = float(i) - float(nside) / 2.0
+        x2a[i] = float(i) - float(nside) / 2.0 + 0.5
 
 
     rotationAngleRadians = np.deg2rad(rotationAngle)
@@ -2181,9 +2184,16 @@ def generate_2d_gaussian_psf(fwhm,nside):
             psfvals[i][j] = np.exp(-(xp * xp / ( 2.0 * sigmaX * sigmaX ) + yp * yp / (2.0 * sigmaY * sigmaY)))
 
 
-    # Return PSF.
+    # Output PSF to FITS file.
 
-    return psfvals
+    hdu = fits.PrimaryHDU(data=psfvals.astype(np.float32))
+    hdu_list = []
+    hdu_list.append(hdu)
+    hdu = fits.HDUList(hdu_list)
+    hdu.writeto(output_filename,overwrite=True,checksum=True)
+
+
+    return
 
 
 #####################################################################################
