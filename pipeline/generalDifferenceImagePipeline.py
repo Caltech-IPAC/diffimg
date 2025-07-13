@@ -425,15 +425,19 @@ if __name__ == '__main__':
     reformatted_science_image_filename = filename_science_image.replace(".fits","_reformatted.fits")
     reformatted_science_uncert_image_filename = filename_science_image.replace(".fits","_reformatted_unc.fits")
 
-    append_extra_col = False
+    append_extra_col = True
+    num_extra_cols = 2
     append_extra_row = True
+    num_extra_rows = 1
 
     dfis.reformat_science_fits_file_and_compute_uncertainty_image_via_simple_model(filename_science_image,
                                                                                    hdu_index_science,
                                                                                    reformatted_science_image_filename,
                                                                                    reformatted_science_uncert_image_filename,
                                                                                    append_extra_col,
+                                                                                   num_extra_cols,
                                                                                    append_extra_row,
+                                                                                   num_extra_rows,
                                                                                    sca_gain,
                                                                                    avg_sci_img)
 
@@ -643,6 +647,25 @@ if __name__ == '__main__':
     start_time_benchmark = end_time_benchmark
 
 
+    # Generate PSFs for science and reference images.
+
+    nside = 61
+
+    fwhm_sci = fwhm_sci_medpix
+    if fwhm_sci < 0.0:
+        fwhm_sci = 2.0
+
+    filename_sci_psf = "science_image_psf.fits"
+    util.generate_2d_gaussian_psf(fwhm_sci,nside,filename_sci_psf)
+
+    fwhm_ref = fwhm_ref_medpix
+    if fwhm_ref < 0.0:
+        fwhm_ref = 2.0
+
+    filename_ref_psf = "reference_image_psf.fits"
+    util.generate_2d_gaussian_psf(fwhm_ref,nside,filename_ref_psf)
+
+
     #################################################################################################################
     # The image data in filename_science_image and sci_fits_file_with_pv FITS files are the same, only the
     # representation of geometric distortion in the FITS headers are different (sip versus pv).
@@ -655,7 +678,7 @@ if __name__ == '__main__':
     #################################################################################################################
 
 
-    python_cmd = '/usr/bin/python3.11'
+    python_cmd = '/usr/bin/python3.12'
     zogy_code = rapid_sw + '/modules/zogy/v21Aug2018/py_zogy.py'
     filename_diffimage = 'diffimage.fits'
     filename_diffpsf = 'diffpsf.fits'
@@ -665,8 +688,8 @@ if __name__ == '__main__':
                 zogy_code,
                 filename_bkg_subbed_science_image,
                 output_resampled_gainmatched_reference_image,
-                filename_psf,
-                filename_refimage_psf,
+                filename_sci_psf,
+                filename_ref_psf,
                 reformatted_science_uncert_image_filename,
                 output_resampled_reference_uncert_image,
                 str(std_sci_img),
@@ -778,14 +801,6 @@ if __name__ == '__main__':
 
 
 
-    # Compute MD5 checksum of masked difference image.
-
-    print("Computing checksum of ",filename_diffimage_masked)
-    checksum_diffimage = db.compute_checksum(filename_diffimage_masked)
-
-    if checksum_diffimage == 65 or checksum_diffimage == 68 or checksum_diffimage == 66:
-        print("*** Error: Unexpected value for checksum =",checksum_diffimage)
-
 
 
 
@@ -793,40 +808,27 @@ if __name__ == '__main__':
 
     product_config['ZOGY'] = {}
 
-    product_config['ZOGY']['rid'] = str(rid_sciimage)
     product_config['ZOGY']['ppid'] = str(ppid_sciimage)
     product_config['ZOGY']['rfid'] = str(rfid)
 
-
-    # By design, the following is redundant.  It is also written to REF_IMAGE block above
-    # only if it was necessary for this pipeline instance to generate a reference image.
-
-    product_config['ZOGY']['awaicgen_output_mosaic_image_infobits'] = str(infobits_refimage)
-
-    product_config['ZOGY']['zogy_output_diffimage_file_checksum'] = checksum_diffimage
-    product_config['ZOGY']['zogy_output_diffimage_file'] = zogy_diffimage_name_for_db_record
-    product_config['ZOGY']['zogy_output_diffpsf_file'] = zogy_diffpsf_name_for_db_record
-    product_config['ZOGY']['zogy_output_scorrimage_file'] = zogy_scorrimage_name_for_db_record
-    product_config['ZOGY']['zogy_output_diffimage_file_status'] = str(1)
-    product_config['ZOGY']['zogy_output_diffimage_file_infobits'] = str(0)                                        # TODO
 
 
     # The following sky positions are correct for the difference image
     # only because the current code reprojects the reference image
     # into the distorted grid of the science image.
 
-    product_config['ZOGY']['ra0'] = str(ra0_sciimage)
-    product_config['ZOGY']['dec0'] = str(dec0_sciimage)
-    product_config['ZOGY']['ra1'] = str(ra1_sciimage)
-    product_config['ZOGY']['dec1'] = str(dec1_sciimage)
-    product_config['ZOGY']['ra2'] = str(ra2_sciimage)
-    product_config['ZOGY']['dec2'] = str(dec2_sciimage)
-    product_config['ZOGY']['ra3'] = str(ra3_sciimage)
-    product_config['ZOGY']['dec3'] = str(dec3_sciimage)
-    product_config['ZOGY']['ra4'] = str(ra4_sciimage)
-    product_config['ZOGY']['dec4'] = str(dec4_sciimage)
+    product_config['ZOGY']['ra0'] = str(ra0)
+    product_config['ZOGY']['dec0'] = str(dec0)
+    product_config['ZOGY']['ra1'] = str(ra1)
+    product_config['ZOGY']['dec1'] = str(dec1)
+    product_config['ZOGY']['ra2'] = str(ra2)
+    product_config['ZOGY']['dec2'] = str(dec2)
+    product_config['ZOGY']['ra3'] = str(ra3)
+    product_config['ZOGY']['dec3'] = str(dec3)
+    product_config['ZOGY']['ra4'] = str(ra4)
+    product_config['ZOGY']['dec4'] = str(dec4)
 
-    product_config['ZOGY']['fid'] = str(fid_sciimage)
+    product_config['ZOGY']['fid'] = str(fid)
     product_config['ZOGY']['nsexcatsources'] = str(nsexcatsources_diffimage)
     product_config['ZOGY']['scalefacref'] = str(scalefacref)
     product_config['ZOGY']['dxrmsfin'] = str(dxrmsfin)
@@ -881,9 +883,9 @@ if __name__ == '__main__':
         if crossconv_flag:
             sfft_cmd.append("--crossconv")
             sfft_cmd.append("--scipsf")
-            sfft_cmd.append(filename_psf)
+            sfft_cmd.append(filename_sci_psf)
             sfft_cmd.append("--refpsf")
-            sfft_cmd.append(filename_refimage_psf)
+            sfft_cmd.append(filename_ref_psf)
 
         exitcode_from_sfft = util.execute_command(sfft_cmd)
 
