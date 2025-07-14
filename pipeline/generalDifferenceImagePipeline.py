@@ -990,6 +990,56 @@ if __name__ == '__main__':
         start_time_benchmark = end_time_benchmark
 
 
+        # Generate naive diffimage uncertainty image, which will be the weight image for sextractor_WEIGHT_IMAGE.
+
+        filename_naivediffimage_unc = filename_naive_diffimage_masked.replace("masked.fits","uncert_masked.fits")
+
+        dfis.compute_diffimage_uncertainty(sca_gain,
+                                           reformatted_science_image_filename,
+                                           output_resampled_gainmatched_reference_image,
+                                           output_resampled_reference_cov_map,
+                                           filename_naive_diffimage_masked,
+                                           filename_naivediffimage_unc)
+        filename_weight_image = filename_naivediffimage_unc
+        filename_naivediffimage_sextractor_catalog = filename_naive_diffimage_masked.replace(".fits",".txt")
+
+
+        # Compute SExtractor catalog for masked difference image.
+        # Execute SExtractor to first detect candidates on Scorr (S/N) match-filter
+        # image, then use to perform aperture phot on difference image to generate
+        # raw ascii catalog file.
+
+        sextractor_diffimage_paramsfile = cfg_path + "/srcExtractParamsDiffImage.inp";
+
+        sextractor_diffimage_dict["sextractor_detection_image".lower()] = filename_naive_diffimage_masked
+        sextractor_diffimage_dict["sextractor_input_image".lower()] = filename_naive_diffimage_masked
+        sextractor_diffimage_dict["sextractor_WEIGHT_IMAGE".lower()] = filename_weight_image
+        sextractor_diffimage_dict["sextractor_PARAMETERS_NAME".lower()] = sextractor_diffimage_paramsfile
+        sextractor_diffimage_dict["sextractor_FILTER_NAME".lower()] = cfg_path + "/srcExtractDiffImageFilter.conv"
+        sextractor_diffimage_dict["sextractor_STARNNW_NAME".lower()] = cfg_path + "/srcExtractDiffImageStarGalaxyClassifier.nnw"
+        sextractor_diffimage_dict["sextractor_CATALOG_NAME".lower()] = filename_naivediffimage_sextractor_catalog
+        sextractor_cmd = util.build_sextractor_command_line_args(sextractor_diffimage_dict)
+        exitcode_from_sextractor = util.execute_command(sextractor_cmd)
+
+        params_to_get_diffimage = ["XWIN_IMAGE","YWIN_IMAGE","FLUX_APER_6"]
+
+        vals_naivediffimage = util.parse_ascii_text_sextractor_catalog(filename_naivediffimage_sextractor_catalog,
+                                                                      sextractor_diffimage_paramsfile,
+                                                                      params_to_get_diffimage)
+
+        nsexcatsources_naivediffimage = len(vals_naivediffimage)
+
+        print("nsexcatsources_naivediffimage =",nsexcatsources_naivediffimage)
+
+
+        # Code-timing benchmark.
+
+        end_time_benchmark = time.time()
+        print("Elapsed time in seconds after running SExtractor on SFFT difference image =",
+            end_time_benchmark - start_time_benchmark)
+        start_time_benchmark = end_time_benchmark
+
+
     # Get listing of working directory as a diagnostic.
 
     ls_cmd = ['ls','-ltr']
