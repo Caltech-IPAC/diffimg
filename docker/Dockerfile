@@ -1,3 +1,4 @@
+# Ensure VPN is NOT running as it interferes with the ubi9 download.
 FROM registry.access.redhat.com/ubi9/ubi
 
 # Install commands and tools.
@@ -12,12 +13,54 @@ RUN yum -y install zlib-devel
 RUN yum -y install atlas
 RUN yum -y install atlas-devel
 RUN yum -y install postgresql
+RUN yum -y install postgresql-devel
 RUN yum -y install unzip
 RUN yum -y install git
 RUN yum -y install sqlite
 
+
+# The following failed to install:
+#RUN yum module install -y llvm-toolset
+# The following failed to install:
+#RUN yum -y install epel-release
+# The following is required to pip install gdal??? It failed anyway.
+#RUN yum -y install gdal
+#RUN yum -y install gdal-devel
+
+
+
+
+
+#RUN dnf -y install wget
+#RUN wget http://s3.amazonaws.com/etc-data.koordinates.com/gdal-travisci/install-libkml-r864-64bit.tar.gz
+#RUN tar xzf install-libkml-r864-64bit.tar.gz
+#RUN cp -r install-libkml/include/* /usr/local/include
+#RUN cp -r install-libkml/lib/* /usr/local/lib
+#RUN ldconfig
+#RUN wget http://download.osgeo.org/gdal/3.11.3/gdal-3.11.3.tar.gz
+#RUN tar xzf gdal-3.11.3.tar.gz
+#RUN cd gdal-3.11.3
+#RUN ./configure --with-libkml
+#RUN make
+#RUN make install
+
+#Dockerfile:43
+#--------------------
+#  41 |     RUN tar xzf gdal-3.11.3.tar.gz
+#  42 |     RUN cd gdal-3.11.3
+#  43 | >>> RUN ./configure --with-libkml
+#  44 |     RUN make
+#  45 |     RUN make install
+#--------------------
+#ERROR: failed to solve: process "/bin/sh -c ./configure --with-libkml" did not complete successfully: exit code: 127
+#[1]  + exit 1     docker build --no-cache --file ~/git/diffimg/docker/Dockerfile --tag  . >&
+
+
+
+
+
 # Install packages in Python 3.9 (/usr/bin/python3)
-# Cannot under Python 3.9: photutils
+# Cannot install under Python 3.9: photutils
 
 RUN yum install -y pip
 RUN pip install --upgrade pip
@@ -34,8 +77,9 @@ RUN pip install --upgrade sfft
 RUN pip install --upgrade scipy
 RUN pip install --upgrade pyvo
 
+
 # Install Python 3.12 with packages (/usr/bin/python3.12)
-# Cannot under Python 3.12: sfft,photutils(?)
+# Cannot install under Python 3.12: sfft,photutils(?)
 
 RUN dnf -y install python3.12
 RUN python3.12 -m ensurepip
@@ -51,8 +95,12 @@ RUN python3.12 -m pip install --upgrade sip_tpv
 RUN python3.12 -m pip install --upgrade matplotlib
 RUN python3.12 -m pip install --upgrade scipy
 RUN python3.12 -m pip install --upgrade pyvo
+RUN python3.12 -m pip install --upgrade Cython
+# The following failed...
 # On Russ's Mac: ERROR: failed to solve: process "/bin/sh -c python3.12 -m pip install --upgrade photutils" did not complete successfully: exit code: 1
+#RUN python3.12 -m pip install --upgrade gdal
 #RUN python3.12 -m pip install --upgrade "photutils[all]"
+
 
 # Install AWS CLI
 
