@@ -2107,6 +2107,8 @@ def compute_image_overlap_area(w_sci,
 
     print("Done computing overlap area...")
 
+    return percent_overlap
+
 
 #-------------------------------------------------------------------
 # Assumes the 2D image data are in the first HDU of the FITS file.
