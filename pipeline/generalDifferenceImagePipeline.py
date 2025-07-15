@@ -167,47 +167,93 @@ if __name__ == '__main__':
     # name,download,center_ra,center_dec,naxes,naxis,scale,format,crpix,crval,crota2,band,bref,bhi,blo,pers_art,glint_art,type,dataset,pixflags,id,scntr,date,hem,scan,image,ut_date,coadd_key,seesh,magzp,msnr10,bin
 
 
-    # Get the first returned 2MASS image for the filter of interest.
+    # Get the returned 2MASS image(s) for the filter of interest.
+    # Pick the one that overlaps the science image the most.
+
+    max_percent_overlap_area = 0.0
+    intersecting_polygon_file = "intersecting_polygon.txt"
 
     for i in range(len(im_table)):
-        if im_table[i]['band'] == filter_science:
-            break
-    print(im_table[i].getdataurl())
+
+        if "fits" not in im_table[i]['download']:
+            continue
+
+        if im_table[i]['band'] != filter_science:
+            continue
+
+        print(im_table[i].getdataurl())
 
 
-    # Download the 2MASS image and decompress it.
-    #
-    # curl --output hi0600256.fits.gz "https://irsa.ipac.caltech.edu:443/cgi-bin/2MASS/IM/nph-im?ds=asky&atdir=/ti08&dh=000616n&scan=060&name=hi0600256.fits"
-    # gunzip hi0600256.fits.gz
+        # Download the 2MASS image and decompress it.
+        #
+        # curl --output hi0600256.fits.gz "https://irsa.ipac.caltech.edu:443/cgi-bin/2MASS/IM/nph-im?ds=asky&atdir=/ti08&dh=000616n&scan=060&name=hi0600256.fits"
+        # gunzip hi0600256.fits.gz
 
-    download_url = im_table[i].getdataurl()
+        download_url = im_table[i].getdataurl()
 
-    filename_match = re.match(r".+?name\=(.+?.fits)", download_url)
+        filename_match = re.match(r".+?name\=(.+?.fits)", download_url)
 
-    try:
-        fits_file_ref = filename_match.group(1)
-        print("fits_file_ref =",fits_file_ref)
+        try:
+            provisional_fits_file_ref = filename_match.group(1)
+            print("provisional_fits_file_ref =",provisional_fits_file_ref)
 
-        gz_fits_file_ref = fits_file_ref + ".gz"
+            gz_provisional_fits_file_ref = provisional_fits_file_ref + ".gz"
 
-        curl_cmd = "curl --output " + gz_fits_file_ref + " \"" + download_url + "\""
-        print("curl_cmd =",curl_cmd)
+            curl_cmd = "curl --output " + gz_provisional_fits_file_ref + " \"" + download_url + "\""
+            print("curl_cmd =",curl_cmd)
 
-        return_code = os.system(curl_cmd)
-        print(f"Command exited with code: {return_code}")
+            return_code = os.system(curl_cmd)
+            print(f"Command exited with code: {return_code}")
 
-        gunzip_cmd = "gunzip -f " + gz_fits_file_ref
-        print("gunzip_cmd =",gunzip_cmd)
+            gunzip_cmd = "gunzip -f " + gz_provisional_fits_file_ref
+            print("gunzip_cmd =",gunzip_cmd)
 
-        return_code = os.system(gunzip_cmd)
-        print(f"Command exited with code: {return_code}")
+            return_code = os.system(gunzip_cmd)
+            print(f"Command exited with code: {return_code}")
 
-    except:
-        print("*** Error: No FITS filename match found; quitting...")
-        exit(64)
+        except:
+            print("*** Error: No FITS filename match found; quitting...")
+            exit(64)
 
 
-    util.compute_image_overlap_area(w_sci,naxis1,naxis2,x0,y0,x1,y1,x2,y2,x3,y3,x4,y4,fits_file_ref)
+        percent_overlap_area = util.compute_image_overlap_area(w_sci,naxis1,naxis2,x0,y0,x1,y1,x2,y2,x3,y3,x4,y4,provisional_fits_file_ref)
+
+        if percent_overlap_area > max_percent_overlap_area:
+
+            try:
+                delete_cmd = "rm -f " + fits_file_ref
+                print("delete_cmd =",delete_cmd)
+
+                return_code = os.system(delete_cmd)
+                print(f"Command exited with code: {return_code}")
+            except:
+                pass
+
+            max_percent_overlap_area = percent_overlap_area
+            fits_file_ref = provisional_fits_file_ref
+
+            copy_cmd = "cp -f outfile intersecting_polygon_file"
+            print("copy_cmd =",copy_cmd)
+
+            return_code = os.system(copy_cmd)
+            print(f"Command exited with code: {return_code}")
+
+
+        else:
+            delete_cmd = "rm -f " + provisional_fits_file_ref
+            print("delete_cmd =",delete_cmd)
+
+            return_code = os.system(delete_cmd)
+            print(f"Command exited with code: {return_code}")
+
+
+
+
+    # The reference image with maximal overlap area and matching filter/band has been selected.
+
+    print("\n")
+    print("Reference image =",fits_file_ref)
+    print(f"max_percent_overlap_area = {max_percent_overlap_area:.2f}")
 
 
     with fits.open(fits_file_ref) as hdul:
