@@ -1005,10 +1005,26 @@ if __name__ == '__main__':
 
     if naive_diffimage_flag:
 
+
+        # Convolve the reference-image PSF with the science image
+        # or vice-versa if the science-image PSF is broader.
+
+        if fwhm_ref >= fwhm_sci:
+            sciimage_for_naive_difference_image = filename_bkg_subbed_science_image.replace(".fits","_convolved.fits")
+            util.convolve_psf_with_image(filename_bkg_subbed_science_image,filename_ref_psf,sciimage_for_naive_difference_image)
+            refimage_for_naive_difference_image = output_resampled_gainmatched_reference_image
+        else:
+            refimage_for_naive_difference_image = output_resampled_gainmatched_reference_image.replace(".fits","_convolved.fits")
+            util.convolve_psf_with_image(output_resampled_gainmatched_reference_image,filename_sci_psf,refimage_for_naive_difference_image)
+            sciimage_for_naive_difference_image = filename_bkg_subbed_science_image
+
+
+        # Compute naive image difference with PSF correction.
+
         filename_naive_diffimage = "naive_diffimage.fits"
 
-        util.compute_naive_difference_image(filename_bkg_subbed_science_image,
-                                            output_resampled_gainmatched_reference_image,
+        util.compute_naive_difference_image(sciimage_for_naive_difference_image,
+                                            refimage_for_naive_difference_image,
                                             filename_naive_diffimage)
 
 
@@ -1084,7 +1100,7 @@ if __name__ == '__main__':
         # Code-timing benchmark.
 
         end_time_benchmark = time.time()
-        print("Elapsed time in seconds after running SExtractor on SFFT difference image =",
+        print("Elapsed time in seconds after running SExtractor on naive difference image =",
             end_time_benchmark - start_time_benchmark)
         start_time_benchmark = end_time_benchmark
 
