@@ -501,10 +501,10 @@ if __name__ == '__main__':
     filename_sciimage_catalog = reformatted_science_image_filename.replace(".fits","_secat.txt")
 
     util.generateScienceImageCatalog(reformatted_science_image_filename,
-                                                                                   reformatted_science_uncert_image_filename,
-                                                                                   cfg_path,
-                                                                                   sextractor_sciimage_dict,
-                                                                                   filename_sciimage_catalog)
+                                     reformatted_science_uncert_image_filename,
+                                     cfg_path,
+                                     sextractor_sciimage_dict,
+                                     filename_sciimage_catalog)
 
 
     # Compute additional quantities needed for the science-image PSF.
