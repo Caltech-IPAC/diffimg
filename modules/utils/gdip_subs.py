@@ -12,6 +12,8 @@ import re
 import subprocess
 import numpy as np
 import numpy.ma as ma
+from scipy.ndimage import convolve
+
 
 from modules.sip_tpv.sip_tpv.sip_to_pv import sip_to_pv
 
@@ -2188,9 +2190,17 @@ def generate_2d_gaussian_psf(fwhm,nside,output_filename):
             psfvals[i][j] = np.exp(-(xp * xp / ( 2.0 * sigmaX * sigmaX ) + yp * yp / (2.0 * sigmaY * sigmaY)))
 
 
+    # Normalize to 0.95
+
+    renorm = 0.95
+    sum = psfvals.sum()
+    print("generate_2d_gaussian_psf: PSF sum =",sum)
+    norm_psfvals = psfvals / sum * renorm
+
+
     # Output PSF to FITS file.
 
-    hdu = fits.PrimaryHDU(data=psfvals.astype(np.float32))
+    hdu = fits.PrimaryHDU(data=norm_psfvals.astype(np.float32))
     hdu_list = []
     hdu_list.append(hdu)
     hdu = fits.HDUList(hdu_list)
@@ -2225,3 +2235,36 @@ def generateScienceImageCatalog(filename_sciimage_image,
 
 
     return
+
+
+#####################################################################################
+# Convolve PSF with input image.
+#####################################################################################
+
+def convolve_psf_with_image(input_filename,psf_filename,output_filename):
+
+    hdul_input = fits.open(input_filename)
+    hdr_input = hdul_input[0].header
+    data_input = hdul_input[0].data
+
+    hdul_input.close()
+
+    hdul_psf = fits.open(psf_filename)
+    hdr_psf = hdul_psf[0].header
+    data_psf = hdul_psf[0].data
+
+    hdul_psf.close()
+
+    image = np.array(data_input)
+    kernel = np.array(data_psf)
+
+    convolved_image = convolve(image, kernel, mode='constant', cval=0.0)
+
+
+    # Output PSF to FITS file.
+
+    hdu = fits.PrimaryHDU(header=hdr_input,data=convolved_image.astype(np.float32))
+    hdu_list = []
+    hdu_list.append(hdu)
+    hdu = fits.HDUList(hdu_list)
+    hdu.writeto(output_filename,overwrite=True,checksum=True)
