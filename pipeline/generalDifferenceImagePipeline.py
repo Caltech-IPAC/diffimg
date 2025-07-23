@@ -1069,10 +1069,7 @@ if __name__ == '__main__':
         filename_naivediffimage_sextractor_catalog = filename_naive_diffimage_masked.replace(".fits",".txt")
 
 
-        # Compute SExtractor catalog for masked difference image.
-        # Execute SExtractor to first detect candidates on Scorr (S/N) match-filter
-        # image, then use to perform aperture phot on difference image to generate
-        # raw ascii catalog file.
+        # Compute SExtractor catalog for masked difference image and generate raw ascii catalog file.
 
         sextractor_diffimage_paramsfile = cfg_path + "/srcExtractParamsDiffImage.inp";
 
