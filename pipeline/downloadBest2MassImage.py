@@ -154,7 +154,7 @@ if __name__ == '__main__':
     ra = ra0
     dec = dec0
     pos = SkyCoord(ra=ra, dec=dec, unit='deg')
-
+    print("RA,Dec of image center =",ra,dec)
 
     # Query for 2MASS images that overlap sky position within 1.0 arcseconds.
 
