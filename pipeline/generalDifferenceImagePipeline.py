@@ -2,12 +2,6 @@ import os
 import configparser
 from astropy.wcs import WCS
 from astropy.io import fits
-from astropy.io import ascii
-from astropy.table import Table
-from astropy.coordinates import SkyCoord
-from astropy.nddata import Cutout2D
-import astropy.units as u
-from astropy.utils.data import download_file
 import math
 import numpy as np
 from datetime import datetime, timezone, UTC
@@ -39,13 +33,31 @@ print("cfg_filename_only =", cfg_filename_only)
 # Assume the RAPID-pipeline git repo is located under /code.
 
 rapid_sw = "/code"
-
-
-# Specify science image.
-
-filename_science_image = 'ADP.2022-07-27T14_56_30.297.fits'
-hdu_index_science = 1                                                    # Second HDU
 jid = 1
+
+
+# Specify science image and reference image.
+
+filename_science_image = os.getenv('SCIFITSFILENAME')
+
+if filename_science_image is None:
+
+    print("*** Error: Env. var. SCIFITSFILENAME not set; quitting...")
+    exit(64)
+
+hdu_index_science = int(os.getenv('SCIHDUINDEX'))
+
+if hdu_index_science is None:
+
+    print("*** Error: Env. var. SCIHDUINDEX not set; quitting...")
+    exit(64)
+
+fits_file_ref = os.getenv('REFFITSFILENAME')
+
+if fits_file_ref is None:
+
+    print("*** Error: Env. var. REFFITSFILENAME not set; quitting...")
+    exit(64)
 
 
 # Compute processing datetime (UT) and processing datetime (Pacific time).
@@ -95,6 +107,14 @@ print("config_input_filename =",config_input_filename)
 #-------------------------------------------------------------------------------------------------------------
 
 if __name__ == '__main__':
+
+
+    # The reference image with maximal overlap area and matching filter/band has been selected.
+
+    print("\n")
+    print("Science image =",filename_science_image)
+    print("hdu_index_science =",hdu_index_science)
+    print("Reference image =",fits_file_ref)
 
 
     # Read FITS file
@@ -149,117 +169,12 @@ if __name__ == '__main__':
     (ra0,dec0,ra1,dec1,ra2,dec2,ra3,dec3,ra4,dec4) = util.compute_sky_image_center_and_four_corners(w_sci,x0,y0,x1,y1,x2,y2,x3,y3,x4,y4)
 
 
-    # Specify sky position of interest and desired filter.
 
-    ra = ra0
-    dec = dec0
-    pos = SkyCoord(ra=ra, dec=dec, unit='deg')
-
-
-    # Query for 2MASS images that overlap sky position within 1.0 arcseconds.
-
-    twomass_service = vo.dal.SIAService("https://irsa.ipac.caltech.edu/cgi-bin/2MASS/IM/nph-im_sia?type=at&ds=asky&")
-    im_table = twomass_service.search(pos=pos, size=1.0*u.arcsec)
-    print(im_table.to_table())
-
-
-    # Columns in table.
-    # name,download,center_ra,center_dec,naxes,naxis,scale,format,crpix,crval,crota2,band,bref,bhi,blo,pers_art,glint_art,type,dataset,pixflags,id,scntr,date,hem,scan,image,ut_date,coadd_key,seesh,magzp,msnr10,bin
-
-
-    # Get the returned 2MASS image(s) for the filter of interest.
-    # Pick the one that overlaps the science image the most.
-
-    max_percent_overlap_area = 0.0
-    intersecting_polygon_file = "intersecting_polygon.txt"
-
-    for i in range(len(im_table)):
-
-        if "fits" not in im_table[i]['download']:
-            continue
-
-        if im_table[i]['band'] != filter_science:
-            continue
-
-        print(im_table[i].getdataurl())
-
-
-        # Download the 2MASS image and decompress it.
-        #
-        # curl --output hi0600256.fits.gz "https://irsa.ipac.caltech.edu:443/cgi-bin/2MASS/IM/nph-im?ds=asky&atdir=/ti08&dh=000616n&scan=060&name=hi0600256.fits"
-        # gunzip hi0600256.fits.gz
-
-        download_url = im_table[i].getdataurl()
-
-        filename_match = re.match(r".+?name\=(.+?.fits)", download_url)
-
-        try:
-            provisional_fits_file_ref = filename_match.group(1)
-            print("provisional_fits_file_ref =",provisional_fits_file_ref)
-
-            gz_provisional_fits_file_ref = provisional_fits_file_ref + ".gz"
-
-            curl_cmd = "curl --output " + gz_provisional_fits_file_ref + " \"" + download_url + "\""
-            print("curl_cmd =",curl_cmd)
-
-            return_code = os.system(curl_cmd)
-            print(f"Command exited with code: {return_code}")
-
-            gunzip_cmd = "gunzip -f " + gz_provisional_fits_file_ref
-            print("gunzip_cmd =",gunzip_cmd)
-
-            return_code = os.system(gunzip_cmd)
-            print(f"Command exited with code: {return_code}")
-
-        except:
-            print("*** Error: No FITS filename match found; quitting...")
-            exit(64)
-
-
-        percent_overlap_area = util.compute_image_overlap_area(w_sci,naxis1,naxis2,x0,y0,x1,y1,x2,y2,x3,y3,x4,y4,provisional_fits_file_ref)
-
-        if percent_overlap_area > max_percent_overlap_area:
-
-            try:
-                delete_cmd = "rm -f " + fits_file_ref
-                print("delete_cmd =",delete_cmd)
-
-                return_code = os.system(delete_cmd)
-                print(f"Command exited with code: {return_code}")
-            except:
-                pass
-
-            max_percent_overlap_area = percent_overlap_area
-            fits_file_ref = provisional_fits_file_ref
-
-            copy_cmd = "cp -f outfile intersecting_polygon_file"
-            print("copy_cmd =",copy_cmd)
-
-            return_code = os.system(copy_cmd)
-            print(f"Command exited with code: {return_code}")
-
-
-        else:
-            delete_cmd = "rm -f " + provisional_fits_file_ref
-            print("delete_cmd =",delete_cmd)
-
-            return_code = os.system(delete_cmd)
-            print(f"Command exited with code: {return_code}")
-
-
-
-
-    # The reference image with maximal overlap area and matching filter/band has been selected.
-
-    print("\n")
-    print("Reference image =",fits_file_ref)
-    print(f"max_percent_overlap_area = {max_percent_overlap_area:.2f}")
 
 
     with fits.open(fits_file_ref) as hdul:
 
         nframes_refimage = hdul[0].header["NUMFRMS"]
-
 
 
     # Get job configuration parameters.
