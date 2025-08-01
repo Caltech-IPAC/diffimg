@@ -2286,7 +2286,8 @@ def convolve_psf_with_image(input_filename,psf_filename,output_filename):
 
 
 #####################################################################################################
-# Cut out the reference image from large mosiac, to the same size as the science image.
+# Cut out the reference image from large mosiac, to around the same size as the science image,
+# allowing for rotation of science image relative to reference image.
 #####################################################################################################
 
 def cutout_image(fits_file,ncx_before,ncy_before,naxis1_sci,naxis2_sci,output_fits_file=None):
