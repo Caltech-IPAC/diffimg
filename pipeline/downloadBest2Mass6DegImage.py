@@ -121,10 +121,10 @@ if __name__ == '__main__':
 
     print("CTYPE = ",w_sci.wcs.crpix)
 
-    naxis1 = hdr['NAXIS1']
-    naxis2 = hdr['NAXIS2']
+    naxis1_sci = hdr['NAXIS1']
+    naxis2_sci = hdr['NAXIS2']
 
-    print("naxis1,naxis2 =",naxis1,naxis2)
+    print("naxis1_sci,naxis2_sci =",naxis1_sci,naxis2_sci)
 
     crpix1 = w_sci.wcs.crpix[0]
     crpix2 = w_sci.wcs.crpix[1]
@@ -140,7 +140,7 @@ if __name__ == '__main__':
 
     # Compute pixel coordinates of science-image center and four corners.
 
-    x0,y0,x1,y1,x2,y2,x3,y3,x4,y4 = util.compute_pix_image_center_and_four_corners(naxis1,naxis2)
+    x0,y0,x1,y1,x2,y2,x3,y3,x4,y4 = util.compute_pix_image_center_and_four_corners(naxis1_sci,naxis2_sci)
 
 
     # Compute RA,Dec of center and four corners of science image.
@@ -177,7 +177,6 @@ if __name__ == '__main__':
     # Pick the one that overlaps the science image the most.
 
     max_percent_overlap_area = 0.0
-    intersecting_polygon_file = "intersecting_polygon.txt"
 
     for i in range(len(im_table)):
 
@@ -196,6 +195,9 @@ if __name__ == '__main__':
             provisional_fits_file_ref = filename_match.group(1)
             print("provisional_fits_file_ref =",provisional_fits_file_ref)
 
+            if "6asec" in provisional_fits_file_ref:
+                continue
+
             curl_cmd = "curl --output " + provisional_fits_file_ref + " \"" + download_url + "\""
             print("curl_cmd =",curl_cmd)
 
@@ -207,9 +209,10 @@ if __name__ == '__main__':
             exit(64)
 
 
-        # Take the absolute value in case the reference image is flipped and polygon vertex order is reversed.
+        # Check image overlap.
 
-        percent_overlap_area = util.compute_image_overlap_area(w_sci,naxis1,naxis2,x0,y0,x1,y1,x2,y2,x3,y3,x4,y4,provisional_fits_file_ref)
+        percent_overlap_area,n_corners_sci_on_ref,corner1_x,corner1_y = \
+            util.check_image_overlap_area(w_sci,naxis1_sci,naxis2_sci,x0,y0,x1,y1,x2,y2,x3,y3,x4,y4,provisional_fits_file_ref)
 
         if percent_overlap_area > max_percent_overlap_area:
 
@@ -225,12 +228,15 @@ if __name__ == '__main__':
             max_percent_overlap_area = percent_overlap_area
             fits_file_ref = provisional_fits_file_ref
 
-            copy_cmd = "cp -f outfile intersecting_polygon_file"
-            print("copy_cmd =",copy_cmd)
+            cutout_fits_file_ref = fits_file_ref.replace(".fits","_cutout.fits")
 
-            return_code = os.system(copy_cmd)
-            print(f"Command exited with code: {return_code}")
+            ncx_before = int(corner1_x) - 1 - naxis1_sci / 2
+            ncy_before = int(corner1_y) - 1 - naxis2_sci / 2
 
+            nx_size = 2 * naxis1_sci
+            ny_size = 2 * naxis2_sci
+
+            util.cutout_image(fits_file_ref,ncx_before,ncy_before,nx_size,ny_size,cutout_fits_file_ref)
 
         else:
             delete_cmd = "rm -f " + provisional_fits_file_ref
@@ -245,4 +251,5 @@ if __name__ == '__main__':
     print("\n")
     print("Reference image =",fits_file_ref)
     print(f"max_percent_overlap_area = {max_percent_overlap_area:.2f}")
+    print("n_corners_sci_on_ref =",n_corners_sci_on_ref)
 
