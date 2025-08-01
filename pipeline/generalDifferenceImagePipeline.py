@@ -169,12 +169,11 @@ if __name__ == '__main__':
     (ra0,dec0,ra1,dec1,ra2,dec2,ra3,dec3,ra4,dec4) = util.compute_sky_image_center_and_four_corners(w_sci,x0,y0,x1,y1,x2,y2,x3,y3,x4,y4)
 
 
-
-
-
     with fits.open(fits_file_ref) as hdul:
-
-        nframes_refimage = hdul[0].header["NUMFRMS"]
+        try:
+            nframes_refimage = hdul[0].header["NUMFRMS"]
+        except:
+            nframes_refimage = 1
 
 
     # Get job configuration parameters.
@@ -228,7 +227,7 @@ if __name__ == '__main__':
     # Code-timing benchmark.
 
     end_time_benchmark = time.time()
-    print("Elapsed time in seconds after downloading reference image =",end_time_benchmark - start_time_benchmark)
+    print("Elapsed time in seconds after initializing =",end_time_benchmark - start_time_benchmark)
     start_time_benchmark = end_time_benchmark
 
 
