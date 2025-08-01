@@ -296,10 +296,14 @@ def fits_data_statistics_with_clipping(input_filename,n_sigma = 3.0,hdu_index = 
     Assumes the 2D image data are in the specified HDU of the FITS file.
     """
 
+    print(f"Opening {input_filename}...")
+
     hdul = fits.open(input_filename)
     data_array = hdul[hdu_index].data
 
     hdul.close()
+
+    print(f"Closing {input_filename}...")
 
     cf = compute_clip_corr(n_sigma)
     sqrtcf = np.sqrt(cf)
@@ -1714,7 +1718,7 @@ def restore_nans(fits_file,nan_indices):
 
 def apply_subpixel_orthogonal_offsets(fits_file,dx,dy,output_fits_file=None):
 
-    print(f"Sub apply_subpixel_orthogonal_offsets: dx = {dx}, dy = {dy} fits_file = {fits_file}")
+    print(f"Sub apply_subpixel_orthogonal_offsets: dx = {dx}, dy = {dy}, fits_file = {fits_file}")
 
     if (abs(dx) > 0.1 and abs(dx) < 5.0) or (abs(dy) > 0.1 and abs(dy) < 5.0):
 
@@ -2052,14 +2056,24 @@ def compute_image_overlap_area(w_sci,
 
     # Compute RA,Dec of center and four corners of reference image.
 
-    ra0,dec0,ra1,dec1,ra2,dec2,ra3,dec3,ra4,dec4 = \
-        compute_sky_image_center_and_four_corners(w_ref,x0_ref,y0_ref,x1_ref,y1_ref,x2_ref,y2_ref,x3_ref,y3_ref,x4_ref,y4_ref)
+    ra0_ref,dec0_ref,ra1_ref,dec1_ref,ra2_ref,dec2_ref,ra3_ref,dec3_ref,ra4_ref,dec4_ref = \
+        compute_sky_image_center_and_four_corners(w_ref,\
+                                                  x0_ref,y0_ref,\
+                                                  x1_ref,y1_ref,\
+                                                  x2_ref,y2_ref,\
+                                                  x3_ref,y3_ref,\
+                                                  x4_ref,y4_ref)
 
 
     # Compute pixel coordinates of reference-image center and four corners in the science-image grid.
 
     x0_refsci,y0_refsci,x1_refsci,y1_refsci,x2_refsci,y2_refsci,x3_refsci,y3_refsci,x4_refsci,y4_refsci = \
-        compute_pix_image_center_and_four_corners_from_sky(w_sci,ra0,dec0,ra1,dec1,ra2,dec2,ra3,dec3,ra4,dec4)
+        compute_pix_image_center_and_four_corners_from_sky(w_sci,\
+                                                           ra0_ref,dec0_ref,\
+                                                           ra1_ref,dec1_ref,\
+                                                           ra2_ref,dec2_ref,\
+                                                           ra3_ref,dec3_ref,\
+                                                           ra4_ref,dec4_ref)
 
 
     # Compute overlap area now that polygon vertices are known.
@@ -2268,3 +2282,239 @@ def convolve_psf_with_image(input_filename,psf_filename,output_filename):
     hdu_list.append(hdu)
     hdu = fits.HDUList(hdu_list)
     hdu.writeto(output_filename,overwrite=True,checksum=True)
+
+
+
+#####################################################################################################
+# Cut out the reference image from large mosiac, to the same size as the science image.
+#####################################################################################################
+
+def cutout_image(fits_file,ncx_before,ncy_before,naxis1_sci,naxis2_sci,output_fits_file=None):
+
+    print(f"Sub cutout_image: ncx_before = {ncx_before}, ncy_before = {ncy_before}, naxis1_sci = {naxis1_sci}, naxis2_sci = {naxis2_sci}, fits_file = {fits_file}")
+
+
+    # Read input FITS file.
+
+    hdul = fits.open(fits_file)
+    hdr = hdul[0].header
+    data = hdul[0].data
+
+
+    # Make correction to CRPIX1 and CRPIX2.
+
+    crpix1 = hdr["CRPIX1"]
+    crpix2 = hdr["CRPIX2"]
+    hdr["CRPIX1"] = crpix1 - ncx_before
+    hdr["CRPIX2"] = crpix2 - ncy_before
+
+
+    # Delete first ncy rows and ncx columns.
+
+    print(f"Delete first ncy rows and ncx cols: ncy_before={ncy_before}, ncx_before={ncx_before}")
+
+    rows_to_cut = list(range(ncy_before))
+    modified_matrix_rows_before = np.delete(data, rows_to_cut, axis=0)
+    print(modified_matrix_rows_before)
+
+    cols_to_cut = list(range(ncx_before))
+    modified_matrix_cols_before = np.delete(modified_matrix_rows_before, cols_to_cut, axis=1)
+    print(modified_matrix_cols_before)
+
+    n1 = naxis1_ref - ncx_before
+    n2 = naxis2_ref - ncy_before
+
+    print(f"Reference-image size after deleting first rows and cols: n1,n2 =",n1,n2)
+
+    print(f"Final size of cutout: naxis1_sci={naxis1_sci}, naxis2_sci={naxis2_sci}")
+
+    rows_to_cut = list(range(naxis2_sci,n2))
+    modified_matrix_rows_after = np.delete(modified_matrix_cols_before, rows_to_cut, axis=0)
+    print(modified_matrix_rows_after)
+
+    cols_to_cut = list(range(naxis1_sci,n1))
+    modified_matrix_cols_after = np.delete(modified_matrix_rows_after, cols_to_cut, axis=1)
+    print(modified_matrix_cols_after)
+
+
+    # Create a new primary HDU with the new image data
+
+    hdul[0] = fits.PrimaryHDU(header=hdr,data=modified_matrix_cols_after.astype(np.float32))
+
+
+    # Write output FITS file.
+
+    if output_fits_file is None:
+        output_fits_file = fits_file
+        print(f"Overwriting input FITS file = {output_fits_file}")
+    else:
+        print(f"Writing new FITS file = {output_fits_file}")
+
+    hdul.writeto(output_fits_file,overwrite=True,checksum=True)
+
+    hdul.close()
+
+
+    # Return None implicitly.
+
+    return
+
+
+
+#####################################################################################################
+# Check whether science image is completely enveloped by reference image onto science image.
+# The 2MASS six-degree mosiac is too large w.r.t. Vista images to execute computeOverlapArea code
+# (as some polygon vertices are NaNs), so try the following method to short circuit it.
+#####################################################################################################
+
+def check_image_overlap_area(w_sci,
+                             naxis1_sci,naxis2_sci,
+                             x0_sci,y0_sci,
+                             x1_sci,y1_sci,
+                             x2_sci,y2_sci,
+                             x3_sci,y3_sci,
+                             x4_sci,y4_sci,
+                             fits_file_ref):
+
+
+    # Read reference-image FITS file.
+
+    hdul = fits.open(fits_file_ref)
+    hdr = hdul[0].header
+    data = hdul[0].data
+
+    naxis1_ref = hdr["NAXIS1"]
+    naxis2_ref = hdr["NAXIS2"]
+
+    w_ref = WCS(hdr) # Initialize WCS object from FITS header
+
+    hdul.close()
+
+
+    # Compute pixel coordinates of reference-image center and four corners.
+
+    x0_ref,y0_ref,x1_ref,y1_ref,x2_ref,y2_ref,x3_ref,y3_ref,x4_ref,y4_ref = \
+        compute_pix_image_center_and_four_corners(naxis1_ref,naxis2_ref)
+
+
+    # Compute RA,Dec of center and four corners of reference image.
+
+    ra0_ref,dec0_ref,ra1_ref,dec1_ref,ra2_ref,dec2_ref,ra3_ref,dec3_ref,ra4_ref,dec4_ref = \
+        compute_sky_image_center_and_four_corners(w_ref,\
+                                                  x0_ref,y0_ref,\
+                                                  x1_ref,y1_ref,\
+                                                  x2_ref,y2_ref,\
+                                                  x3_ref,y3_ref,\
+                                                  x4_ref,y4_ref)
+
+
+    # Compute pixel coordinates of reference-image center and four corners in the science-image grid.
+
+    x0_refsci,y0_refsci,x1_refsci,y1_refsci,x2_refsci,y2_refsci,x3_refsci,y3_refsci,x4_refsci,y4_refsci = \
+        compute_pix_image_center_and_four_corners_from_sky(w_sci,\
+                                                           ra0_ref,dec0_ref,\
+                                                           ra1_ref,dec1_ref,\
+                                                           ra2_ref,dec2_ref,\
+                                                           ra3_ref,dec3_ref,\
+                                                           ra4_ref,dec4_ref)
+
+
+
+
+
+    # The 2MASS six-degree mosiac is too large w.r.t. Vista images to execute computeOverlapArea code
+    # (as some polygon vertices are NaNs), so try the following method to short circuit it.
+
+    twomass_sixdeg_flag = True
+
+    if twomass_sixdeg_flag:
+
+        # Compute RA,Dec of center and four corners of science image.
+
+        (ra0_sci,dec0_sci,ra1_sci,dec1_sci,ra2_sci,dec2_sci,ra3_sci,dec3_sci,ra4_sci,dec4_sci) = \
+            compute_sky_image_center_and_four_corners(w_sci,\
+                                                      x0_sci,y0_sci,\
+                                                      x1_sci,y1_sci,\
+                                                      x2_sci,y2_sci,\
+                                                      x3_sci,y3_sci,\
+                                                      x4_sci,y4_sci)
+
+        # Check if sky corners of science image are contained within reference image.
+
+        sciimage_on_refimage_flag = True
+
+        ra = ra1_sci
+        dec = dec1_sci
+        pos = SkyCoord(ra=ra, dec=dec, unit='deg')
+        x1,y1 = w_ref.world_to_pixel(pos)
+        print(f"sciimage within refimage: Corner 1: ra={ra}, dec={dec}) corresponds to x={x1}, y={y1}")
+
+        ra = ra2_sci
+        dec = dec2_sci
+        pos = SkyCoord(ra=ra, dec=dec, unit='deg')
+        x2,y2 = w_ref.world_to_pixel(pos)
+        print(f"sciimage within refimage: Corner 2: ra={ra}, dec={dec}) corresponds to x={x2}, y={y2}")
+
+        ra = ra3_sci
+        dec = dec3_sci
+        pos = SkyCoord(ra=ra, dec=dec, unit='deg')
+        x3,y3 = w_ref.world_to_pixel(pos)
+        print(f"sciimage within refimage: Corner 3: ra={ra}, dec={dec}) corresponds to x={x3}, y={y3}")
+
+        ra = ra4_sci
+        dec = dec4_sci
+        pos = SkyCoord(ra=ra, dec=dec, unit='deg')
+        x4,y4 = w_ref.world_to_pixel(pos)
+        print(f"sciimage within refimage: Corner 4: ra={ra}, dec={dec}) corresponds to x={x4}, y={y4}")
+
+
+        # Initially assume all four corners of science image are enveloped by reference image, and check if not.
+
+        n_corners_sci_on_ref = 4
+
+        if x1 < 0 or x1 >= naxis1_ref:
+            sciimage_on_refimage_flag = False
+            n_corners_sci_on_ref -= 1
+        elif y1 < 0 or y1 >= naxis2_ref:
+            sciimage_on_refimage_flag = False
+            n_corners_sci_on_ref -= 1
+
+        if x2 < 0 or x2 >= naxis1_ref:
+            sciimage_on_refimage_flag = False
+            n_corners_sci_on_ref -= 1
+        elif y2 < 0 or y2 >= naxis2_ref:
+            sciimage_on_refimage_flag = False
+            n_corners_sci_on_ref -= 1
+
+        if x3 < 0 or x3 >= naxis1_ref:
+            sciimage_on_refimage_flag = False
+            n_corners_sci_on_ref -= 1
+        elif y3 < 0 or y3 >= naxis2_ref:
+            sciimage_on_refimage_flag = False
+            n_corners_sci_on_ref -= 1
+
+        if x4 < 0 or x4 >= naxis1_ref:
+            sciimage_on_refimage_flag = False
+            n_corners_sci_on_ref -= 1
+        elif y4 < 0 or y4 >= naxis2_ref:
+            sciimage_on_refimage_flag = False
+            n_corners_sci_on_ref -= 1
+
+        print("sciimage_on_refimage_flag =",sciimage_on_refimage_flag)
+        print("n_corners_sci_on_ref =",n_corners_sci_on_ref)
+
+        if sciimage_on_refimage_flag:
+
+            percent_overlap = 100.0
+
+            print(f"percent_overlap = {percent_overlap:.2f}")
+
+            print("Done checking if science image is contained within reference image...")
+
+        else:
+            percent_overlap = 1.0
+
+
+        # Return x4,y4 as corner 1 because reference image is vertically flipped.
+
+        return percent_overlap,n_corners_sci_on_ref,x4,y4
