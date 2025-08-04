@@ -230,11 +230,13 @@ if __name__ == '__main__':
 
             cutout_fits_file_ref = fits_file_ref.replace(".fits","_cutout.fits")
 
-            ncx_before = int(corner1_x) - 1 - naxis1_sci / 2
-            ncy_before = int(corner1_y) - 1 - naxis2_sci / 2
+            pixel_ratio_sci_to_ref = 0.333                                                       # TODO
 
-            nx_size = 2 * naxis1_sci
-            ny_size = 2 * naxis2_sci
+            ncx_before = int(corner1_x) - 1 - int(pixel_ratio_sci_to_ref * naxis1_sci / 2)
+            ncy_before = int(corner1_y) - 1 - int(pixel_ratio_sci_to_ref * naxis2_sci / 2)
+
+            nx_size = int(2 * naxis1_sci * pixel_ratio_sci_to_ref)
+            ny_size = int(2 * naxis2_sci * pixel_ratio_sci_to_ref)
 
             util.cutout_image(fits_file_ref,ncx_before,ncy_before,nx_size,ny_size,cutout_fits_file_ref)
 
