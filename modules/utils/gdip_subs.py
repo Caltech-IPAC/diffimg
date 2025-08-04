@@ -2173,6 +2173,8 @@ def generate_2d_gaussian_psf(fwhm,nside,output_filename):
 
     sigma = fwhm / scale_factor
 
+    print("sigma = ",sigma)
+
     sigmaX = sigma
     sigmaY = sigma
 
@@ -2308,6 +2310,11 @@ def cutout_image(fits_file,ncx_before,ncy_before,naxis1_sci,naxis2_sci,output_fi
     crpix2 = hdr["CRPIX2"]
     hdr["CRPIX1"] = crpix1 - ncx_before
     hdr["CRPIX2"] = crpix2 - ncy_before
+
+    naxis1_ref = hdr["NAXIS1"]
+    naxis2_ref = hdr["NAXIS2"]
+
+    print("naxis1_ref,naxis2_ref =",naxis1_ref,naxis2_ref)
 
 
     # Delete first ncy rows and ncx columns.
@@ -2516,6 +2523,6 @@ def check_image_overlap_area(w_sci,
             percent_overlap = 1.0
 
 
-        # Return x4,y4 as corner 1 because reference image is vertically flipped.
+        # Return x4,y4 as corner 1 because science image is vertically flipped.
 
         return percent_overlap,n_corners_sci_on_ref,x4,y4
