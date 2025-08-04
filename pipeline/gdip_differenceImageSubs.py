@@ -164,8 +164,10 @@ def compute_diffimage_uncertainty(sca_gain,
 
 def gainMatchScienceAndReferenceImages(filename_sci_image,
                                        filename_sci_uncert,
+                                       filename_scigainmatchsexcat_catalog,
                                        filename_ref_image,
                                        filename_ref_uncert,
+                                       filename_refgainmatchsexcat_catalog,
                                        cfg_path,
                                        gainmatch_dict,
                                        sextractor_gainmatch_dict,
@@ -192,9 +194,9 @@ def gainMatchScienceAndReferenceImages(filename_sci_image,
     params_file = cfg_path + "/srcExtractParamsGainMatch.inp"
     filter_conv_file = cfg_path + "/srcExtractGainMatchFilter.conv"
     classifier_nnw_file = cfg_path + "/srcExtractGainMatchStarGalaxyClassifier.nnw"
-    params_to_get_vals_scicat = ["XWIN_IMAGE","YWIN_IMAGE","FLUX_APER_6"]
+    params_to_get_vals_scicat = ["XWIN_IMAGE","YWIN_IMAGE","FLUX_APER_6","FWHM_IMAGE"]
     params_to_get_vals_refcat = ["XWIN_IMAGE","YWIN_IMAGE","FLUX_APER_6","MAG_APER_6",
-                                 "CLASS_STAR","ISOAREAF_IMAGE","AWIN_WORLD","BWIN_WORLD"]
+                                 "CLASS_STAR","ISOAREAF_IMAGE","AWIN_WORLD","BWIN_WORLD","FWHM_IMAGE"]
 
 
     # Thresholds are used to filter input ref-image catalog to
@@ -284,8 +286,6 @@ def gainMatchScienceAndReferenceImages(filename_sci_image,
 
     # Compute SExtractor catalog for science image.
 
-    filename_scigainmatchsexcat_catalog = filename_sci_image.replace(".fits","_scigainmatchsexcat.txt")
-
     sextractor_gainmatch_dict["sextractor_detection_image".lower()] = "None"
     sextractor_gainmatch_dict["sextractor_input_image".lower()] = filename_sci_image
     sextractor_gainmatch_dict["sextractor_WEIGHT_IMAGE".lower()] = filename_sci_uncert
@@ -300,8 +300,6 @@ def gainMatchScienceAndReferenceImages(filename_sci_image,
 
     # Compute SExtractor catalog for reference image.
 
-    filename_refgainmatchsexcat_catalog = filename_ref_image.replace(".fits","_refgainmatchsexcat.txt")
-
     sextractor_gainmatch_dict["sextractor_detection_image".lower()] = "None"
     sextractor_gainmatch_dict["sextractor_input_image".lower()] = filename_ref_image
     sextractor_gainmatch_dict["sextractor_WEIGHT_IMAGE".lower()] = filename_ref_uncert
@@ -314,12 +312,12 @@ def gainMatchScienceAndReferenceImages(filename_sci_image,
     exitcode_from_sextractor = util.execute_command(sextractor_cmd)
 
 
-    # Parse XWIN_IMAGE,YWIN_IMAGE,FLUX_APER_6 (14-pixel diameter) from SExtractor catalog for science image.
+    # Parse XWIN_IMAGE,YWIN_IMAGE,FLUX_APER_6,FWHM_IMAGE (14-pixel diameter) from SExtractor catalog for science image.
 
     sci_vals = util.parse_ascii_text_sextractor_catalog(filename_scigainmatchsexcat_catalog,params_file,params_to_get_vals_scicat)
 
 
-    # Parse XWIN_IMAGE,YWIN_IMAGE,FLUX_APER_6 (14-pixel diameter),CLASS_STAR,ISOAREAF_IMAGE,AWIN_WORLD,BWIN_WORLD
+    # Parse XWIN_IMAGE,YWIN_IMAGE,FLUX_APER_6 (14-pixel diameter),CLASS_STAR,ISOAREAF_IMAGE,AWIN_WORLD,BWIN_WORLD,FWHM_IMAGE
     # from SExtractor catalog for reference image.
 
     ref_vals = util.parse_ascii_text_sextractor_catalog(filename_refgainmatchsexcat_catalog,params_file,params_to_get_vals_refcat)
@@ -332,13 +330,16 @@ def gainMatchScienceAndReferenceImages(filename_sci_image,
     sci_x_vals = []
     sci_y_vals = []
     sci_flux_vals = []
+    sci_fwhm_vals = []
     for i in range(num_rows_sci):
         sci_x = float(sci_vals[i][0])
         sci_y = float(sci_vals[i][1])
         sci_flux = float(sci_vals[i][2])
+        sci_fwhm = float(sci_vals[i][3])
         sci_x_vals.append(sci_x)
         sci_y_vals.append(sci_y)
         sci_flux_vals.append(sci_flux)
+        sci_fwhm_vals.append(sci_fwhm)
 
     num_rows_ref = len(ref_vals)
 
@@ -349,6 +350,7 @@ def gainMatchScienceAndReferenceImages(filename_sci_image,
     ref_class_star_vals = []
     ref_isoareaf_image_vals = []
     ref_awin_to_bwin_world_ratio_vals = []
+    ref_fwhm_vals = []
     for i in range(num_rows_ref):
         ref_x = float(ref_vals[i][0])
         ref_y = float(ref_vals[i][1])
@@ -358,6 +360,7 @@ def gainMatchScienceAndReferenceImages(filename_sci_image,
         ref_isoareaf_image = float(ref_vals[i][5])
         ref_awin_world = float(ref_vals[i][6])
         ref_bwin_world = float(ref_vals[i][7])
+        ref_fwhm = float(ref_vals[i][8])
         ref_x_vals.append(ref_x)
         ref_y_vals.append(ref_y)
         ref_flux_vals.append(ref_flux)
@@ -365,6 +368,7 @@ def gainMatchScienceAndReferenceImages(filename_sci_image,
         ref_class_star_vals.append(ref_class_star)
         ref_isoareaf_image_vals.append(ref_isoareaf_image)
         ref_awin_to_bwin_world_ratio_vals.append(ref_awin_world / ref_bwin_world)
+        ref_fwhm_vals.append(ref_fwhm)
 
     nrefcat = num_rows_ref
 
@@ -378,9 +382,18 @@ def gainMatchScienceAndReferenceImages(filename_sci_image,
     magref_val += magzpref
 
 
+    sci_fwhm_median = np.median(np.array(sci_fwhm_vals))
+    ref_fwhm_median = np.median(np.array(ref_fwhm_vals))
+
+    print("sci_fwhm_median =",sci_fwhm_median)
+    print("ref_fwhm_median =",ref_fwhm_median)
+
 
     for aa,bb,cc,dd in zip(magref_val,classstarref_val,isoareafimageref_val,awintobwinworldratioref_val):
         print("aa,bb,cc,dd =",aa,bb,cc,dd)
+
+
+
 
     min_magref_val = np.nanmin(magref_val)
     max_magref_val = np.nanmax(magref_val)
