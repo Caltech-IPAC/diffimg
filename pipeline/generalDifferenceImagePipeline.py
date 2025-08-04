@@ -309,7 +309,11 @@ if __name__ == '__main__':
 
     print("fwhm_ref_medpix,fwhm_ref_minpix,fwhm_ref_maxpix =",fwhm_ref_medpix,fwhm_ref_minpix,fwhm_ref_maxpix)
 
-    fwhm_ref = fwhm_ref_medpix
+
+    pixel_ratio_sci_to_ref = 0.333                                                       # TODO
+
+
+    fwhm_ref = fwhm_ref_medpix / pixel_ratio_sci_to_ref
     if fwhm_ref < 0.0:
         fwhm_ref = 2.0
 
@@ -564,10 +568,17 @@ if __name__ == '__main__':
     # and then computing scale factor.  To apply, multiply reference image by scalefacref.
     ######################################################################################
 
+
+    filename_scigainmatchsexcat_catalog = filename_bkg_subbed_science_image.replace(".fits","_scigainmatchsecat.txt")
+
+    filename_refgainmatchsexcat_catalog = output_resampled_reference_image.replace(".fits","_refgainmatchsecat.txt")
+
     scalefac,dxrmsfin,dyrmsfin,dxmedianfin,dymedianfin = dfis.gainMatchScienceAndReferenceImages(filename_bkg_subbed_science_image,
                                                                                                  reformatted_science_uncert_image_filename,
+                                                                                                 filename_scigainmatchsexcat_catalog,
                                                                                                  output_resampled_reference_image,
                                                                                                  output_resampled_reference_uncert_image,
+                                                                                                 filename_refgainmatchsexcat_catalog,
                                                                                                  cfg_path,
                                                                                                  gainmatch_dict,
                                                                                                  sextractor_gainmatch_dict,
