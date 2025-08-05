@@ -38,13 +38,24 @@ print("cfg_filename_only =", cfg_filename_only)
 # Assume the RAPID-pipeline git repo is located under /code.
 
 rapid_sw = "/code"
+jid = 1
 
 
 # Specify science image.
 
-filename_science_image = 'ADP.2022-07-27T14_56_30.297.fits'
-hdu_index_science = 1                                                    # Second HDU
-jid = 1
+filename_science_image = os.getenv('SCIFITSFILENAME')
+
+if filename_science_image is None:
+
+    print("*** Error: Env. var. SCIFITSFILENAME not set; quitting...")
+    exit(64)
+
+hdu_index_science = int(os.getenv('SCIHDUINDEX'))
+
+if hdu_index_science is None:
+
+    print("*** Error: Env. var. SCIHDUINDEX not set; quitting...")
+    exit(64)
 
 
 # Compute processing datetime (UT) and processing datetime (Pacific time).
