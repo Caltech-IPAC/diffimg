@@ -728,6 +728,7 @@ if __name__ == '__main__':
                                        reformatted_science_image_filename,
                                        output_resampled_gainmatched_reference_image,
                                        output_resampled_reference_cov_map,
+                                       post_zogy_keep_diffimg_lower_cov_map_thresh,
                                        filename_diffimage_masked,
                                        filename_diffimage_unc_masked)
     filename_weight_image = filename_diffimage_unc_masked
@@ -878,6 +879,7 @@ if __name__ == '__main__':
                                                reformatted_science_image_filename,
                                                output_resampled_gainmatched_reference_image,
                                                output_resampled_reference_cov_map,
+                                               post_zogy_keep_diffimg_lower_cov_map_thresh,
                                                filename_sfftdiffimage,
                                                filename_sfftdiffimage_unc)
             filename_weight_image = filename_sfftdiffimage_unc
@@ -988,6 +990,7 @@ if __name__ == '__main__':
                                            reformatted_science_image_filename,
                                            output_resampled_gainmatched_reference_image,
                                            output_resampled_reference_cov_map,
+                                           post_zogy_keep_diffimg_lower_cov_map_thresh,
                                            filename_naive_diffimage_masked,
                                            filename_naivediffimage_unc)
         filename_weight_image = filename_naivediffimage_unc
