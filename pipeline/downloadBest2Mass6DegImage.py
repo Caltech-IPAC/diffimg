@@ -117,10 +117,11 @@ if __name__ == '__main__':
 
         hdr = hdul[hdu_index_science].header
 
-        radecsys = hdr['RADECSYS']
-        print("radecsys =",radecsys)
-        hdr.remove('RADECSYS', remove_all=True)
-        hdr['RADESYSA'] = radecsys
+        if 'RADECSYS' in hdr:
+            radecsys = hdr['RADECSYS']
+            print("radecsys =",radecsys)
+            hdr.remove('RADECSYS', remove_all=True)
+            hdr['RADESYSA'] = radecsys
 
         hdr.remove('PROJP1', remove_all=True)
         hdr.remove('PROJP3', remove_all=True)
@@ -168,7 +169,7 @@ if __name__ == '__main__':
 
     # Query for 2MASS mosaic_sixdeg images that overlap sky position within 1.0 arcseconds.
 
-    download_url = "https://irsa.ipac.caltech.edu/SIA?COLLECTION=twomass_sixdeg&POS=circle+85.53725422808287+-68.72445403392891+0.0003&RESPONSEFORMAT=IPAC_TABLE"
+    download_url = f"https://irsa.ipac.caltech.edu/SIA?COLLECTION=twomass_sixdeg&POS=circle+{ra}+{dec}+0.0003&RESPONSEFORMAT=IPAC_TABLE"
 
     table_fits_file_ref = "twomass_sixdeg.ipac"
     curl_cmd = "curl --output " + table_fits_file_ref + " \"" + download_url + "\""
