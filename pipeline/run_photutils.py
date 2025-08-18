@@ -11,6 +11,7 @@ import time
 to_zone = tz.gettz('America/Los_Angeles')
 
 import modules.utils.gdip_subs as util
+import modules.utils.gdip_photutils as pu
 
 
 start_time_benchmark = time.time()
@@ -86,15 +87,15 @@ if __name__ == '__main__':
     output_psfcat_finder_filename = psfcat_diffimage_dict["output_psfcat_finder_filename"]
     output_psfcat_residual_filename = psfcat_diffimage_dict["output_psfcat_residual_filename"]
 
-    psfcat_flag,phot,psfphot = util.compute_diffimage_psf_catalog(n_clip_sigma,
-                                                                  n_thresh_sigma,
-                                                                  fwhm,
-                                                                  fit_shape,
-                                                                  aperture_radius,
-                                                                  input_img_filename,
-                                                                  input_unc_filename,
-                                                                  input_psf_filename,
-                                                                  output_psfcat_residual_filename)
+    psfcat_flag,phot,psfphot = pu.compute_diffimage_psf_catalog(n_clip_sigma,
+                                                                n_thresh_sigma,
+                                                                fwhm,
+                                                                fit_shape,
+                                                                aperture_radius,
+                                                                input_img_filename,
+                                                                input_unc_filename,
+                                                                input_psf_filename,
+                                                                output_psfcat_residual_filename)
 
     print("psfcat_flag =",psfcat_flag)
 
