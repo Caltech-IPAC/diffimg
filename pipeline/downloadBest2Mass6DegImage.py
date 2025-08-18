@@ -58,6 +58,19 @@ if hdu_index_science is None:
     exit(64)
 
 
+# Funpack if science image has .fz extension.
+
+if ".fz" in filename_science_image:
+    compressed_filename_science_image = filename_science_image
+    filename_science_image = compressed_filename_science_image[:-3]
+
+    funpack_cmd = "funpack -O " + filename_science_image + " " + compressed_filename_science_image
+    print("funpack_cmd =",funpack_cmd)
+
+    return_code = os.system(funpack_cmd)
+    print(f"Command exited with code: {return_code}")
+
+
 # Compute processing datetime (UT) and processing datetime (Pacific time).
 
 datetime_utc_now = datetime.now(UTC)
@@ -185,6 +198,12 @@ if __name__ == '__main__':
 
     # Columns of interest in table: access_url and energy_bandpassname.
 
+    for i in range(len(im_table)):
+        download_url = im_table[i]['access_url']
+        print("Possible download_url =",download_url)
+
+
+
     # Get the returned 2MASS image(s) for the filter of interest.
     # Pick the one that overlaps the science image the most.
 
@@ -192,11 +211,20 @@ if __name__ == '__main__':
 
     for i in range(len(im_table)):
 
+        download_url = im_table[i]['access_url']
+        print("download_url =",download_url)
+        download_filter = im_table[i]['energy_bandpassname'].lower()
+        print("download_filter =",download_filter)
+
         if "fits" not in im_table[i]['access_url']:
+            print("Skipping because not a fits-file URL...")
             continue
 
-        if im_table[i]['energy_bandpassname'].lower() != filter_science.lower():
+        if download_filter not in filter_science.lower():
+            print(f"Skipping because of filter mismatch: {download_filter} vs {filter_science.lower()}...")
             continue
+
+        print("Okay, found a candidate 2MASS mosaic...")
 
         download_url = im_table[i]['access_url']
         print("download_url =",download_url)
