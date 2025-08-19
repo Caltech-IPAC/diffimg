@@ -964,6 +964,10 @@ if __name__ == '__main__':
 
         # Compute naive image difference with PSF correction.
 
+        print(f"Science image for naive difference image = {sciimage_for_naive_difference_image}")
+        print(f"Reference image for naive difference image = {refimage_for_naive_difference_image}")
+
+
         filename_naive_diffimage = "naive_diffimage.fits"
 
         util.compute_naive_difference_image(sciimage_for_naive_difference_image,
