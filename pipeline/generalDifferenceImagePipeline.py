@@ -60,6 +60,19 @@ if fits_file_ref is None:
     exit(64)
 
 
+# Funpack if science image has .fz extension.
+
+if ".fz" in filename_science_image:
+    compressed_filename_science_image = filename_science_image
+    filename_science_image = compressed_filename_science_image[:-3]
+
+    funpack_cmd = "funpack -O " + filename_science_image + " " + compressed_filename_science_image
+    print("funpack_cmd =",funpack_cmd)
+
+    return_code = os.system(funpack_cmd)
+    print(f"Command exited with code: {return_code}")
+
+
 # Compute processing datetime (UT) and processing datetime (Pacific time).
 
 datetime_utc_now = datetime.now(UTC)
@@ -127,10 +140,11 @@ if __name__ == '__main__':
 
         hdr = hdul[hdu_index_science].header
 
-        radecsys = hdr['RADECSYS']
-        print("radecsys =",radecsys)
-        hdr.remove('RADECSYS', remove_all=True)
-        hdr['RADESYSA'] = radecsys
+        if 'RADECSYS' in hdr:
+            radecsys = hdr['RADECSYS']
+            print("radecsys =",radecsys)
+            hdr.remove('RADECSYS', remove_all=True)
+            hdr['RADESYSA'] = radecsys
 
         hdr.remove('PROJP1', remove_all=True)
         hdr.remove('PROJP3', remove_all=True)
