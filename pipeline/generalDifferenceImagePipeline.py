@@ -538,8 +538,6 @@ if __name__ == '__main__':
     print("avg_ref_img,std_ref_img,cnt_ref_img =",avg_ref_img,std_ref_img,cnt_ref_img)
 
 
-
-
     # Subtract background from science image.  Since the reference image has been swarped,
     # it already has the background subtracted.
 
@@ -563,6 +561,10 @@ if __name__ == '__main__':
                   bkgest_include_dir,
                   '-ot',
                   filename_global_clippedmean_sciimage_tbl,
+                  '-o1',
+                  'bkg_local_clippedmean.fits',
+                  '-o3',
+                  'bkg_local_datascale.fits',
                   '-o2',
                   filename_bkg_subbed_science_image]
 
