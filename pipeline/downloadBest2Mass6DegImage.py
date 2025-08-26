@@ -249,12 +249,15 @@ if __name__ == '__main__':
             exit(64)
 
 
-        # Check image overlap.
+        # Check image overlap of provisional reference-image FITS file.
 
         percent_overlap_area,n_corners_sci_on_ref,corner1_x,corner1_y = \
             util.check_image_overlap_area(w_sci,naxis1_sci,naxis2_sci,x0,y0,x1,y1,x2,y2,x3,y3,x4,y4,provisional_fits_file_ref)
 
         if percent_overlap_area > max_percent_overlap_area:
+
+
+            # Elevate provisional reference image to the best choice for now.
 
             try:
                 delete_cmd = "rm -f " + fits_file_ref
@@ -265,7 +268,6 @@ if __name__ == '__main__':
             except:
                 pass
 
-            max_percent_overlap_area = percent_overlap_area
             fits_file_ref = provisional_fits_file_ref
 
             cutout_fits_file_ref = fits_file_ref.replace(".fits","_cutout.fits")
@@ -280,12 +282,19 @@ if __name__ == '__main__':
 
             util.cutout_image(fits_file_ref,ncx_before,ncy_before,nx_size,ny_size,cutout_fits_file_ref)
 
-        else:
-            delete_cmd = "rm -f " + provisional_fits_file_ref
-            print("delete_cmd =",delete_cmd)
 
-            return_code = os.system(delete_cmd)
-            print(f"Command exited with code: {return_code}")
+            # Cut out smaller, more manageable image from large mosaic, correct its WCS, and recompute the overlap area.
+
+            percent_overlap_area = util.compute_image_overlap_area(w_sci,naxis1_sci,naxis2_sci,x0,y0,x1,y1,x2,y2,x3,y3,x4,y4,cutout_fits_file_ref)
+            max_percent_overlap_area = percent_overlap_area
+
+        else:
+            # Comment out for now so the provisional FITS files can be checked manually.
+            #delete_cmd = "rm -f " + provisional_fits_file_ref
+            #print("delete_cmd =",delete_cmd)
+            #return_code = os.system(delete_cmd)
+            #print(f"Command exited with code: {return_code}")
+            pass
 
 
     # The reference image with maximal overlap area and matching filter/band has been selected.
