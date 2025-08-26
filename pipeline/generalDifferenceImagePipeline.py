@@ -390,25 +390,59 @@ if __name__ == '__main__':
     avg_sci_img = stats_sci_img["clippedavg"]
 
 
-    # Reformat the science image FITS file
-    # so that the image data are contained in the PRIMARY header.
+    # Reformat the science image FITS file ADP.2022-07-27T14_56_30.297.fits
+    # so that the image data from the second HDU are contained in the PRIMARY header.
     # Compute uncertainty image via simple model (photon noise only).
     # Resize images
     # from
     # NAXIS1  =                 2099 / length of data axis 1
     # NAXIS2  =                 2100 / length of data axis 2
     # to
-    # NAXIS1  =                 2099 / length of data axis 1
+    # NAXIS1  =                 2101 / length of data axis 1
     # NAXIS2  =                 2101 / length of data axis 2
-    # (odd number of pixels on each side).
+    # (SQUARE image with odd number of pixels on each side).
 
     reformatted_science_image_filename = filename_science_image.replace(".fits","_reformatted.fits")
     reformatted_science_uncert_image_filename = filename_science_image.replace(".fits","_reformatted_unc.fits")
 
+
+    # Ensure science image is square with an odd number of pixels on each side.
+    # Apply padding if necessary.
+
+    print("-----> naxis1,naxis2 =",naxis1,naxis2)
+
+    new_naxis1 = naxis1
+    new_naxis2 = naxis2
+    rem1 = naxis1 % 2
+    if rem1 == 0:
+        new_naxis1 += 1
+    rem2 = naxis2 % 2
+    if rem2 == 0:
+        new_naxis2 += 1
+
+    if new_naxis1 > new_naxis2:
+        num_extra_cols = new_naxis1 - naxis1
+        num_extra_rows = new_naxis1 - naxis2
+    elif new_naxis1 < new_naxis2:
+        num_extra_cols = new_naxis2 - naxis1
+        num_extra_rows = new_naxis2 - naxis2
+    elif new_naxis1 == new_naxis2:
+        num_extra_cols = new_naxis1 - naxis1
+        num_extra_rows = new_naxis2 - naxis2
+    else:
+        print("*** Error: unexpected logic branch; quitting...")
+        exit(64)
+
     append_extra_col = True
-    num_extra_cols = 2
+    if num_extra_cols == 0:
+        append_extra_col = False
+
     append_extra_row = True
-    num_extra_rows = 1
+    if num_extra_rows == 0:
+        append_extra_row = False
+
+    print("-----> num_extra_cols,num_extra_rows =",num_extra_cols,num_extra_rows)
+    print("-----> append_extra_col,append_extra_row =",append_extra_col,append_extra_row)
 
     dfis.reformat_science_fits_file_and_compute_uncertainty_image_via_simple_model(filename_science_image,
                                                                                    hdu_index_science,
@@ -543,8 +577,8 @@ if __name__ == '__main__':
 
     bkgest_code = rapid_sw + '/c/bin/bkgest'
     bkgest_include_dir = rapid_sw + '/c/include'
-    filename_bkg_subbed_science_image = 'bkg_subbed_science_image.fits'
-    filename_global_clippedmean_sciimage_tbl = 'global_clippedmean_science_image.tbl'
+    filename_bkg_subbed_science_image = bkgest_dict["filename_bkg_subbed_science_image"]
+    filename_global_clippedmean_sciimage_tbl = bkgest_dict["filename_global_clippedmean_sciimage_tbl"]
 
     bkgest_cmd = [bkgest_code,
                   '-i',
