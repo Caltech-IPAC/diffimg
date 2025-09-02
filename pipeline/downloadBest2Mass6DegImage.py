@@ -98,9 +98,22 @@ if diffimg_work is None:
     print("*** Error: Env. var. DIFFIMG_WORK not set; quitting...")
     exit(64)
 
+keep_flag = os.getenv('KEEP_FLAG')
+
+if keep_flag is None:
+    keep_flag = False
+elif keep_flag == "0"
+    keep_flag = False
+elif keep_flag == "1"
+    keep_flag = True
+
+
+# Build configuration file (*.ini) path.
+
 cfg_path = diffimg_sw + "/cdf"
 
 print("diffimg_sw =",diffimg_sw)
+print("diffimg_work =",diffimg_work)
 print("cfg_path =",cfg_path)
 
 
@@ -259,14 +272,14 @@ if __name__ == '__main__':
 
             # Elevate provisional reference image to the best choice for now.
 
-            try:
-                delete_cmd = "rm -f " + fits_file_ref
-                print("delete_cmd =",delete_cmd)
-
-                return_code = os.system(delete_cmd)
-                print(f"Command exited with code: {return_code}")
-            except:
-                pass
+            if not keep_flag:
+                try:
+                    delete_cmd = "rm -f " + fits_file_ref
+                    print("delete_cmd =",delete_cmd)
+                    return_code = os.system(delete_cmd)
+                    print(f"Command exited with code: {return_code}")
+                except:
+                    pass
 
             fits_file_ref = provisional_fits_file_ref
 
@@ -289,12 +302,12 @@ if __name__ == '__main__':
             max_percent_overlap_area = percent_overlap_area
 
         else:
-            # Comment out for now so the provisional FITS files can be checked manually.
-            #delete_cmd = "rm -f " + provisional_fits_file_ref
-            #print("delete_cmd =",delete_cmd)
-            #return_code = os.system(delete_cmd)
-            #print(f"Command exited with code: {return_code}")
-            pass
+
+            if not keep_flag:
+                delete_cmd = "rm -f " + provisional_fits_file_ref
+                print("delete_cmd =",delete_cmd)
+                return_code = os.system(delete_cmd)
+                print(f"Command exited with code: {return_code}")
 
 
     # The reference image with maximal overlap area and matching filter/band has been selected.
