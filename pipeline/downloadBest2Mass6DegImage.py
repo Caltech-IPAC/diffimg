@@ -102,9 +102,9 @@ keep_flag = os.getenv('KEEP_FLAG')
 
 if keep_flag is None:
     keep_flag = False
-elif keep_flag == "0"
+elif keep_flag == "0":
     keep_flag = False
-elif keep_flag == "1"
+elif keep_flag == "1":
     keep_flag = True
 
 
