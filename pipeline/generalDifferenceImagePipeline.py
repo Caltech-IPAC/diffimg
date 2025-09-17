@@ -545,7 +545,7 @@ if __name__ == '__main__':
     start_time_benchmark = end_time_benchmark
 
 
-    # Compute image statistics for ZOGY.
+    # Compute science-image statistics for ZOGY.
 
     n_sigma = 3.0
     hdu_index = 0
@@ -559,17 +559,7 @@ if __name__ == '__main__':
     std_sci_img = stats_sci_img["clippedstd"]
     cnt_sci_img = stats_sci_img["nkept"]
 
-    stats_ref_img = util.fits_data_statistics_with_clipping(output_resampled_reference_image,\
-                                                            n_sigma,\
-                                                            hdu_index,\
-                                                            saturation_level_refimage)
-
-    avg_ref_img = stats_ref_img["clippedavg"]
-    std_ref_img = stats_ref_img["clippedstd"]
-    cnt_ref_img = stats_ref_img["nkept"]
-
     print("avg_sci_img,std_sci_img,cnt_sci_img =",avg_sci_img,std_sci_img,cnt_sci_img)
-    print("avg_ref_img,std_ref_img,cnt_ref_img =",avg_ref_img,std_ref_img,cnt_ref_img)
 
 
     # Subtract background from science image.  Since the reference image has been swarped,
@@ -639,13 +629,45 @@ if __name__ == '__main__':
 
     print("scalefac,dxrmsfin,dyrmsfin,dxmedianfin,dymedianfin =",scalefac,dxrmsfin,dyrmsfin,dxmedianfin,dymedianfin)
 
+
+
+
+
+
+
+    #scalefac = 0.065
+    #print("New hardwired scalefac =",scalefac)
+
+
+
+
     scalefacref = 1. / scalefac
 
 
-    # Compute resampled gain-matched reference image.
+    # Compute resampled gain-matched reference image and its uncertainty image.
 
     output_resampled_gainmatched_reference_image = output_resampled_reference_image.replace(".fits","_gainmatched.fits")
     util.scale_image_data(output_resampled_reference_image,scalefacref,output_resampled_gainmatched_reference_image)
+
+    output_resampled_gainmatched_reference_uncert_image = output_resampled_reference_uncert_image.replace(".fits","_gainmatched.fits")
+    util.scale_image_data(output_resampled_reference_uncert_image,scalefacref,output_resampled_gainmatched_reference_uncert_image)
+
+
+    # Compute science-image statistics for ZOGY.
+
+    n_sigma = 3.0
+    hdu_index = 0
+
+    stats_ref_img = util.fits_data_statistics_with_clipping(output_resampled_gainmatched_reference_image,\
+                                                            n_sigma,\
+                                                            hdu_index,\
+                                                            saturation_level_refimage)
+
+    avg_ref_img = stats_ref_img["clippedavg"]
+    std_ref_img = stats_ref_img["clippedstd"]
+    cnt_ref_img = stats_ref_img["nkept"]
+
+    print("avg_ref_img,std_ref_img,cnt_ref_img =",avg_ref_img,std_ref_img,cnt_ref_img)
 
 
     # Code-timing benchmark.
@@ -712,7 +734,7 @@ if __name__ == '__main__':
                 filename_sci_psf,
                 filename_ref_psf,
                 reformatted_science_uncert_image_filename,
-                output_resampled_reference_uncert_image,
+                output_resampled_gainmatched_reference_uncert_image,
                 str(std_sci_img),
                 str(std_ref_img),
                 str(dxrmsfin),
