@@ -709,6 +709,23 @@ if __name__ == '__main__':
     util.generate_2d_gaussian_psf(fwhm_ref,nside,filename_ref_psf)
 
 
+    # Optionally, as a sanity check, inject a fake source into the science image
+    # before feeding it into ZOGY.
+
+    inject_fake_source_flag = True
+
+    if inject_fake_source_flag:
+
+        x_fake_source = 269                        # 1-based image-pixel coordinates
+        y_fake_source = 1668
+        peak_flux_fake_source = 1500               # Peak flux [DN]
+        util.inject_fake_source(x_fake_source,
+                                y_fake_source,
+                                peak_flux_fake_source,
+                                filename_sci_psf,
+                                filename_bkg_subbed_science_image)
+
+
     #################################################################################################################
     # The image data in filename_science_image and sci_fits_file_with_pv FITS files are the same, only the
     # representation of geometric distortion in the FITS headers are different (sip versus pv).
