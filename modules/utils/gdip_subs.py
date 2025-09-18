@@ -13,6 +13,7 @@ import subprocess
 import numpy as np
 import numpy.ma as ma
 from scipy.ndimage import convolve
+import random
 
 from modules.sip_tpv.sip_tpv.sip_to_pv import sip_to_pv
 
@@ -1770,7 +1771,7 @@ def apply_subpixel_orthogonal_offsets(fits_file,dx,dy,output_fits_file=None):
         new_naxis1 = scale_factor * naxis1
         new_naxis2 = scale_factor * naxis2
 
-        up_data = np.empty(shape=(new_naxis1, new_naxis2))
+        up_data = np.empty(shape=(new_naxis2, new_naxis1))
 
         for i in range(naxis2):
             for j in range(naxis1):
@@ -1783,7 +1784,7 @@ def apply_subpixel_orthogonal_offsets(fits_file,dx,dy,output_fits_file=None):
 
         # Apply the subpixel offsets and then downsample image.
 
-        dn_data = np.zeros(shape=(naxis1, naxis2))
+        dn_data = np.zeros(shape=(naxis2, naxis1))
         for i in range(naxis2):
             for j in range(naxis1):
                 ii_s = max(0,i * scale_factor + y_offset)
@@ -2559,3 +2560,75 @@ def computeSkyCoordsFromPixelCoords(filename_sciimage_image,x_list,y_list):
 
 
     return ra,dec
+
+#####################################################################################
+# Inject a fake source at given the given image-pixel coordinates,
+# which is assumed to be not near the image edge.
+# Assume PSF image side is odd number of pixels.
+# Add random photon noise in each fake-source pixel for more realistic results.
+#####################################################################################
+
+def inject_fake_source(x_fake_source,
+                       y_fake_source,
+                       peak_flux_fake_source,
+                       filename_science_psf,
+                       filename_science_image):
+
+
+    # Read science-PSF FITS file.
+
+    hdul_psf = fits.open(filename_science_psf)
+    hdr_psf = hdul_psf[0].header
+    data_psf = hdul_psf[0].data
+
+    naxis1_psf = hdr_psf["NAXIS1"]
+    naxis2_psf = hdr_psf["NAXIS2"]
+
+    hdul_psf.close()
+
+
+    # Read science-image FITS file.
+
+    hdul_img = fits.open(filename_science_image)
+    hdr_img = hdul_img[0].header
+    data_img = hdul_img[0].data
+
+    naxis1_img = hdr_img["NAXIS1"]
+    naxis2_img = hdr_img["NAXIS2"]
+
+    # Inject fake source into science image.
+
+    image = np.array(data_img)
+    psf = np.array(data_psf)
+
+    hwin1 = int((naxis1_psf - 1) / 2)
+    hwin2 = int((naxis2_psf - 1) / 2)
+
+    peak_value = psf[hwin2][hwin1]
+
+    scale_factor = peak_flux_fake_source / peak_value
+
+    for i in range(naxis2_psf):
+        for j in range(naxis1_psf):
+            ii = y_fake_source - 1 + i - hwin2
+            jj = x_fake_source - 1 + j - hwin1
+            fake_source_flux = psf[i][j] * scale_factor
+            image[ii,jj] += fake_source_flux
+            fake_source_photon_noise = np.sqrt(fake_source_flux) * random.random()
+            image[ii,jj] += fake_source_photon_noise
+
+    # Create a new primary HDU with the new image data
+
+    hdul_img[0] = fits.PrimaryHDU(header=hdr_img,data=image.astype(np.float32))
+
+
+    # Overwrite science-image FITS file with injected fake source.
+
+    hdul_img.writeto(filename_science_image,overwrite=True,checksum=True)
+
+    hdul_img.close()
+
+
+    # Return None implicitly.
+
+    return
