@@ -2561,12 +2561,13 @@ def computeSkyCoordsFromPixelCoords(filename_sciimage_image,x_list,y_list):
 
     return ra,dec
 
-#####################################################################################
-# Inject a fake source at given the given image-pixel coordinates,
-# which is assumed to be not near the image edge.
+
+###########################################################################################
+# Inject a fake source centered on a science-image pixel at the given pixel coordinates,
+# which are assumed to be at least half the PSF-image size away from the science-mage edge.
 # Assume PSF image side is odd number of pixels.
 # Add random photon noise in each fake-source pixel for more realistic results.
-#####################################################################################
+###########################################################################################
 
 def inject_fake_source(x_fake_source,
                        y_fake_source,
@@ -2596,6 +2597,7 @@ def inject_fake_source(x_fake_source,
     naxis1_img = hdr_img["NAXIS1"]
     naxis2_img = hdr_img["NAXIS2"]
 
+
     # Inject fake source into science image.
 
     image = np.array(data_img)
@@ -2616,6 +2618,7 @@ def inject_fake_source(x_fake_source,
             image[ii,jj] += fake_source_flux
             fake_source_photon_noise = np.sqrt(fake_source_flux) * random.random()
             image[ii,jj] += fake_source_photon_noise
+
 
     # Create a new primary HDU with the new image data
 
