@@ -1022,17 +1022,13 @@ if __name__ == '__main__':
     if naive_diffimage_flag:
 
 
-        # Convolve the reference-image PSF with the science image
-        # or vice-versa if the science-image PSF is broader.
+        # Convolve the reference-image PSF with the science image and vice-versa.
 
-        if fwhm_ref >= fwhm_sci:
-            sciimage_for_naive_difference_image = filename_bkg_subbed_science_image.replace(".fits","_convolved.fits")
-            util.convolve_psf_with_image(filename_bkg_subbed_science_image,filename_ref_psf,sciimage_for_naive_difference_image)
-            refimage_for_naive_difference_image = output_resampled_gainmatched_reference_image
-        else:
-            refimage_for_naive_difference_image = output_resampled_gainmatched_reference_image.replace(".fits","_convolved.fits")
-            util.convolve_psf_with_image(output_resampled_gainmatched_reference_image,filename_sci_psf,refimage_for_naive_difference_image)
-            sciimage_for_naive_difference_image = filename_bkg_subbed_science_image
+        sciimage_for_naive_difference_image = filename_bkg_subbed_science_image.replace(".fits","_convolved.fits")
+        util.convolve_psf_with_image(filename_bkg_subbed_science_image,filename_ref_psf,sciimage_for_naive_difference_image)
+
+        refimage_for_naive_difference_image = output_resampled_gainmatched_reference_image.replace(".fits","_convolved.fits")
+        util.convolve_psf_with_image(output_resampled_gainmatched_reference_image,filename_sci_psf,refimage_for_naive_difference_image)
 
 
         # Compute naive image difference with PSF correction.
