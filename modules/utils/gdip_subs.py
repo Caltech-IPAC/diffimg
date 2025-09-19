@@ -2616,8 +2616,9 @@ def inject_fake_source(x_fake_source,
             jj = x_fake_source - 1 + j - hwin1
             fake_source_flux = psf[i][j] * scale_factor
             image[ii,jj] += fake_source_flux
-            fake_source_photon_noise = np.sqrt(fake_source_flux) * random.random()
-            image[ii,jj] += fake_source_photon_noise
+            fake_source_photon_noise_sigma = np.sqrt(fake_source_flux)
+            single_gaussian_deviate = random.gauss(mu=0.0, sigma=fake_source_photon_noise_sigma)
+            image[ii,jj] += single_gaussian_deviate
 
 
     # Create a new primary HDU with the new image data
