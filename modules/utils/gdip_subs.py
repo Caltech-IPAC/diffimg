@@ -2564,7 +2564,7 @@ def computeSkyCoordsFromPixelCoords(filename_sciimage_image,x_list,y_list):
 
 ###########################################################################################
 # Inject a fake source centered on a science-image pixel at the given pixel coordinates,
-# which are assumed to be at least half the PSF-image size away from the science-mage edge.
+# which are assumed to be at least half the PSF-image size away from the science-image edge.
 # Assume PSF image side is odd number of pixels.
 # Add random photon noise in each fake-source pixel for more realistic results.
 ###########################################################################################
